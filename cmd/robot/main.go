@@ -1,5 +1,15 @@
 package main
 
+import (
+	"fmt"
+
+	"github.com/LogicHou/bftr/store/factory"
+)
+
 func main() {
-	println("todo")
+	s, err := factory.New("mem")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(s)
 }

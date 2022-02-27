@@ -2,10 +2,12 @@ package store
 
 import (
 	"sync"
+
+	"github.com/LogicHou/bftr/store/factory"
 )
 
 func init() {
-	println("todo")
+	factory.Register("mem", &MemStore{})
 }
 
 type MemStore struct {
