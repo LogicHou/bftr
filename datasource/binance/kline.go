@@ -2,7 +2,7 @@ package binance
 
 import (
 	"context"
-	"fmt"
+	"errors"
 
 	"github.com/LogicHou/bftr/indicator"
 	"github.com/LogicHou/bftr/internal/config"
@@ -22,41 +22,19 @@ func init() {
 	client.NewSetServerTimeService().Do(context.Background())
 }
 
-func Get(limit int) ([]*indicator.Kline, error) {
-	klines, err := client.NewKlinesService().Symbol(cfg.Symbol).
-		Interval(cfg.Interval).Limit(limit).Do(context.Background())
-	if err != nil {
-		return nil, err
-	}
-	r := []*indicator.Kline{}
-	for _, v := range klines[:len(klines)-1] {
-		kl := &indicator.Kline{
-			OpenTime:  v.OpenTime,
-			CloseTime: v.CloseTime,
-			Open:      utils.StrToF64(v.Open),
-			High:      utils.StrToF64(v.High),
-			Low:       utils.StrToF64(v.Low),
-			Close:     utils.StrToF64(v.Close),
-			Volume:    utils.StrToF64(v.Volume),
-			TradeNum:  v.TradeNum,
-		}
-		r = append(r, kl)
-	}
-	return r, nil
-}
-
 type KlineSrv struct {
-	Klines []*indicator.Kline
+	Klines []indicator.Kline
 }
 
-func (k *KlineSrv) Get(limit int) error {
-	klines, err := client.NewKlinesService().Symbol(cfg.Symbol).
+func (this *KlineSrv) Get(limit int) error {
+	bklines, err := client.NewKlinesService().Symbol(cfg.Symbol).
 		Interval(cfg.Interval).Limit(limit).Do(context.Background())
 	if err != nil {
-		return nil
+		return err
 	}
-	for _, v := range klines[:len(klines)-1] {
-		kl := &indicator.Kline{
+	this.Klines = make([]indicator.Kline, len(bklines)-1)
+	for i, v := range bklines[:len(bklines)-1] {
+		kl := indicator.Kline{
 			OpenTime:  v.OpenTime,
 			CloseTime: v.CloseTime,
 			Open:      utils.StrToF64(v.Open),
@@ -66,25 +44,20 @@ func (k *KlineSrv) Get(limit int) error {
 			Volume:    utils.StrToF64(v.Volume),
 			TradeNum:  v.TradeNum,
 		}
-		k.Klines = append(k.Klines, kl)
+		this.Klines[i] = kl
 	}
 	return nil
 }
 
-type KDKline struct {
-	indicator.Kline
-	K float64
-	D float64
-}
-
-type KDKlineSrv struct {
-	KlineSrv *KlineSrv
-	KDKlines []*KDKline
-}
-
-func (k *KDKlineSrv) Get() error {
-	for _, v := range k.KlineSrv.Klines {
-		fmt.Println(v.Close)
+func (this *KlineSrv) WithKdj() error {
+	kdj := indicator.NewKdj(9, 3, 3)
+	k, d, _ := kdj.WithKdj(this.Klines)
+	if len(this.Klines) != len(k) {
+		return errors.New("the comparison objects are not equal")
+	}
+	for i := range this.Klines {
+		this.Klines[i].K = utils.FRound2(k[i])
+		this.Klines[i].D = utils.FRound2(d[i])
 	}
 	return nil
 }

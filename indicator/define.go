@@ -9,4 +9,10 @@ type Kline struct {
 	Close     float64
 	Volume    float64
 	TradeNum  int64
+	K         float64
+	D         float64
+	MA5       float64
+	MA10      float64
+	MA20      float64
+	MA100     float64
 }
