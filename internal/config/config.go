@@ -12,6 +12,10 @@ func init() {
 }
 
 type Cfg struct {
+	Binance `json:"binance"`
+}
+
+type Binance struct {
 	Symbol    string `json:"symbol"`
 	ApiKey    string `json:"apiKey"`
 	SecretKey string `json:"secretKey"`

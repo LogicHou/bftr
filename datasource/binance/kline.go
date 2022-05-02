@@ -3,6 +3,9 @@ package binance
 import (
 	"context"
 	"errors"
+	"fmt"
+	"log"
+	"time"
 
 	"github.com/LogicHou/bftr/indicator"
 	"github.com/LogicHou/bftr/internal/config"
@@ -18,21 +21,46 @@ var (
 
 func init() {
 	cfg = config.Get()
-	client = binance.NewFuturesClient(cfg.ApiKey, cfg.SecretKey)
+	client = binance.NewFuturesClient(cfg.Binance.ApiKey, cfg.Binance.SecretKey)
 	client.NewSetServerTimeService().Do(context.Background())
 }
 
 type KlineSrv struct {
-	Klines []indicator.Kline
+	Client  *futures.Client
+	Klines  []*indicator.Kline
+	KlineCh chan *futures.WsKlineEvent
+	DoneC   chan struct{}
+	StopC   chan struct{}
+}
+
+func New() (*KlineSrv, error) {
+	ks := &KlineSrv{
+		Client:  client,
+		KlineCh: make(chan *futures.WsKlineEvent),
+	}
+	doneC, stopC, err := futures.WsKlineServe(cfg.Binance.Symbol, cfg.Binance.Interval,
+		func(event *futures.WsKlineEvent) {
+			ks.KlineCh <- event
+		},
+		func(err error) {
+			log.Println(time.Now().Format("2006-01-02 15:04:05"), "errmsg:", err)
+		})
+	if err != nil {
+		err = fmt.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: ", err)
+		return &KlineSrv{}, err
+	}
+	ks.DoneC = doneC
+	ks.StopC = stopC
+	return ks, nil
 }
 
 func (this *KlineSrv) Get(limit int) error {
-	bklines, err := client.NewKlinesService().Symbol(cfg.Symbol).
+	bklines, err := this.Client.NewKlinesService().Symbol(cfg.Symbol).
 		Interval(cfg.Interval).Limit(limit).Do(context.Background())
 	if err != nil {
 		return err
 	}
-	this.Klines = make([]indicator.Kline, len(bklines)-1)
+	this.Klines = make([]*indicator.Kline, len(bklines)-1)
 	for i, v := range bklines[:len(bklines)-1] {
 		kl := indicator.Kline{
 			OpenTime:  v.OpenTime,
@@ -44,7 +72,7 @@ func (this *KlineSrv) Get(limit int) error {
 			Volume:    utils.StrToF64(v.Volume),
 			TradeNum:  v.TradeNum,
 		}
-		this.Klines[i] = kl
+		this.Klines[i] = &kl
 	}
 	return nil
 }
