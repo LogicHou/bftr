@@ -58,7 +58,6 @@ func (c *Cache) RemoveOldest() {
 
 // Add adds a value to the cache.
 func (c *Cache) Add(key string, value Value) {
-	println(string("1234"))
 	if ele, ok := c.cache[key]; ok {
 		c.ll.MoveToFront(ele)
 		kv := ele.Value.(*entry)

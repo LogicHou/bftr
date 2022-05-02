@@ -11,7 +11,7 @@ func NewKdj(n1 int, n2 int, n3 int) *Kdj {
 	return &Kdj{n1: n1, n2: n2, n3: n3}
 }
 
-func (this *Kdj) maxHigh(bids []Kline) (h float64) {
+func (this *Kdj) maxHigh(bids []*Kline) (h float64) {
 	h = bids[0].High
 	for i := 0; i < len(bids); i++ {
 		if bids[i].High > h {
@@ -21,7 +21,7 @@ func (this *Kdj) maxHigh(bids []Kline) (h float64) {
 	return
 }
 
-func (this *Kdj) minLow(bids []Kline) (l float64) {
+func (this *Kdj) minLow(bids []*Kline) (l float64) {
 	l = bids[0].Low
 	for i := 0; i < len(bids); i++ {
 		if bids[i].Low < l {
@@ -43,7 +43,7 @@ func (this *Kdj) sma(x []float64, n float64) (r []float64) {
 	return
 }
 
-func (this *Kdj) WithKdj(bids []Kline) (k, d, j []float64) {
+func (this *Kdj) WithKdj(bids []*Kline) (k, d, j []float64) {
 	l := len(bids)
 	rsv := make([]float64, l)
 	j = make([]float64, l)
