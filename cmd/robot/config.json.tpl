@@ -1,6 +1,8 @@
 {
-  "symbol": "ETHUSDT",
-  "apiKey": "",
-  "secretKey": "",
-  "interval": "30m"
+  "binance": {
+    "symbol": "ETHUSDT",
+    "apiKey": "",
+    "secretKey": "",
+    "interval": "30m"
+  }
 }
