@@ -3,54 +3,19 @@ package binance
 import (
 	"context"
 	"errors"
-	"fmt"
-	"log"
-	"time"
 
 	"github.com/LogicHou/bftr/indicator"
-	"github.com/LogicHou/bftr/internal/config"
 	"github.com/LogicHou/bftr/utils"
-	"github.com/adshao/go-binance/v2"
 	"github.com/adshao/go-binance/v2/futures"
 )
 
-var (
-	cfg    *config.Cfg
-	client *futures.Client
-)
-
-func init() {
-	cfg = config.Get()
-	client = binance.NewFuturesClient(cfg.Binance.ApiKey, cfg.Binance.SecretKey)
-	client.NewSetServerTimeService().Do(context.Background())
-}
-
 type KlineSrv struct {
-	Client  *futures.Client
-	Klines  []*indicator.Kline
-	KlineCh chan *futures.WsKlineEvent
-	DoneC   chan struct{}
-	StopC   chan struct{}
+	Client *futures.Client
+	Klines []*indicator.Kline
 }
 
-func New() (*KlineSrv, error) {
-	ks := &KlineSrv{
-		Client:  client,
-		KlineCh: make(chan *futures.WsKlineEvent),
-	}
-	doneC, stopC, err := futures.WsKlineServe(cfg.Binance.Symbol, cfg.Binance.Interval,
-		func(event *futures.WsKlineEvent) {
-			ks.KlineCh <- event
-		},
-		func(err error) {
-			log.Println(time.Now().Format("2006-01-02 15:04:05"), "errmsg:", err)
-		})
-	if err != nil {
-		err = fmt.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: ", err)
-		return &KlineSrv{}, err
-	}
-	ks.DoneC = doneC
-	ks.StopC = stopC
+func NewKlineSrv() (*KlineSrv, error) {
+	ks := &KlineSrv{}
 	return ks, nil
 }
 
