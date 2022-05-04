@@ -4,28 +4,25 @@ import (
 	"context"
 	"errors"
 
+	"github.com/LogicHou/bftr/datahandle"
 	"github.com/LogicHou/bftr/indicator"
 	"github.com/LogicHou/bftr/utils"
-	"github.com/adshao/go-binance/v2/futures"
 )
 
 type KlineSrv struct {
-	Client *futures.Client
-	Klines []*indicator.Kline
 }
 
-func NewKlineSrv() (*KlineSrv, error) {
-	ks := &KlineSrv{}
-	return ks, nil
+func NewKlineSrv() datahandle.Kline {
+	return &KlineSrv{}
 }
 
-func (this *KlineSrv) Get(limit int) error {
-	bklines, err := this.Client.NewKlinesService().Symbol(cfg.Symbol).
+func (this *KlineSrv) Get(limit int) ([]*indicator.Kline, error) {
+	bklines, err := client.NewKlinesService().Symbol(cfg.Symbol).
 		Interval(cfg.Interval).Limit(limit).Do(context.Background())
 	if err != nil {
-		return err
+		return nil, err
 	}
-	this.Klines = make([]*indicator.Kline, len(bklines)-1)
+	ks := make([]*indicator.Kline, len(bklines)-1)
 	for i, v := range bklines[:len(bklines)-1] {
 		kl := indicator.Kline{
 			OpenTime:  v.OpenTime,
@@ -37,20 +34,20 @@ func (this *KlineSrv) Get(limit int) error {
 			Volume:    utils.StrToF64(v.Volume),
 			TradeNum:  v.TradeNum,
 		}
-		this.Klines[i] = &kl
+		ks[i] = &kl
 	}
-	return nil
+	return ks, nil
 }
 
-func (this *KlineSrv) WithKdj() error {
+func (this *KlineSrv) WithKdj(klines []*indicator.Kline) error {
 	kdj := indicator.NewKdj(9, 3, 3)
-	k, d, _ := kdj.WithKdj(this.Klines)
-	if len(this.Klines) != len(k) {
+	k, d, _ := kdj.WithKdj(klines)
+	if len(klines) != len(k) {
 		return errors.New("the comparison objects are not equal")
 	}
-	for i := range this.Klines {
-		this.Klines[i].K = utils.FRound2(k[i])
-		this.Klines[i].D = utils.FRound2(d[i])
+	for i := range klines {
+		klines[i].K = utils.FRound2(k[i])
+		klines[i].D = utils.FRound2(d[i])
 	}
 	return nil
 }

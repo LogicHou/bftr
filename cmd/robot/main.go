@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/LogicHou/bftr/datahandle/binance"
 	_ "github.com/LogicHou/bftr/internal/store"
 	"github.com/LogicHou/bftr/strategy"
 	"github.com/LogicHou/bftr/workerpool"
@@ -16,7 +15,7 @@ func main() {
 	time.Sleep(2 * time.Second)
 	err := p.Schedule(func() {
 		strategyKDJ := strategy.NewStrategyKDJ()
-		strategyKDJ.Run(binance.NewClient(), nil, nil)
+		strategyKDJ.Run()
 	})
 	if err != nil {
 		fmt.Printf("task kdj: error: %s\n", err.Error())

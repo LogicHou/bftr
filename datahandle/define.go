@@ -1,11 +1,9 @@
 package datahandle
 
-type Client interface {
-	Start() error
-}
+import "github.com/LogicHou/bftr/indicator"
 
 type Kline interface {
-	Get()
+	Get(limit int) ([]*indicator.Kline, error)
 }
 
 type Trade interface {
