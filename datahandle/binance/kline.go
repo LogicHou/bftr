@@ -4,16 +4,11 @@ import (
 	"context"
 	"errors"
 
-	"github.com/LogicHou/bftr/datahandle"
 	"github.com/LogicHou/bftr/indicator"
 	"github.com/LogicHou/bftr/utils"
 )
 
 type KlineSrv struct {
-}
-
-func NewKlineSrv() datahandle.Kline {
-	return &KlineSrv{}
 }
 
 func (this *KlineSrv) Get(limit int) ([]*indicator.Kline, error) {
@@ -37,6 +32,16 @@ func (this *KlineSrv) Get(limit int) ([]*indicator.Kline, error) {
 		ks[i] = &kl
 	}
 	return ks, nil
+}
+
+func (this *KlineSrv) WithMa(klines []*indicator.Kline) error {
+	ma := indicator.NewMa(5)
+	ma5 := ma.WithMa(klines)
+
+	for i := range klines {
+		klines[i].MA5 = ma5[i]
+	}
+	return nil
 }
 
 func (this *KlineSrv) WithKdj(klines []*indicator.Kline) error {

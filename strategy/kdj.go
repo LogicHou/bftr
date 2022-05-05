@@ -2,6 +2,7 @@ package strategy
 
 import (
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/LogicHou/bftr/datahandle"
@@ -20,6 +21,17 @@ var trade *datahandle.Trade
 
 func (this *KDJ) Run() error {
 	fmt.Println("strategyKDJ run")
+	klineSrv := &binance.KlineSrv{}
+	restKlines, err := klineSrv.Get(11)
+	err = klineSrv.WithKdj(restKlines)
+	err = klineSrv.WithMa(restKlines)
+	if err != nil {
+		return err
+	}
+	for _, v := range restKlines {
+		fmt.Println("bbb", v.Close, v.K)
+	}
+	os.Exit(111)
 	bclient, err := binance.NewClient()
 	if err != nil {
 		err = fmt.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: ", err)
