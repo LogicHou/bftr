@@ -22,15 +22,13 @@ var trade *datahandle.Trade
 func (this *KDJ) Run() error {
 	fmt.Println("strategyKDJ run")
 	klineSrv := &binance.KlineSrv{}
-	restKlines, err := klineSrv.Get(11)
+	restKlines, err := klineSrv.Get(41)
 	err = klineSrv.WithKdj(restKlines)
 	err = klineSrv.WithMa(restKlines)
 	if err != nil {
 		return err
 	}
-	for _, v := range restKlines {
-		fmt.Println("bbb", v.Close, v.K)
-	}
+
 	os.Exit(111)
 	bclient, err := binance.NewClient()
 	if err != nil {

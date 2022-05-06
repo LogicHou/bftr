@@ -1,8 +1,7 @@
 package indicator
 
 import (
-	"fmt"
-	"math"
+	"github.com/LogicHou/bftr/utils"
 )
 
 type Ma struct {
@@ -23,14 +22,12 @@ func (this *Ma) WithMa(bids []*Kline) (ma []float64) {
 		if i < this.n1 {
 			continue
 		}
-		fmt.Println("aaa", bids[i].Close, bids[i].K)
 		total := 0.0
-		// @todo 这里错了，记得改
-		for _, v := range bids[i-this.n1 : i] {
+		j := i + 1
+		for _, v := range bids[j-this.n1 : j] {
 			total += v.Close
 		}
-		ma[i] = math.Round(total/float64(i)*1000) / 1000
+		ma[i] = utils.FRound2(total / float64(this.n1))
 	}
-	fmt.Println(ma)
 	return
 }

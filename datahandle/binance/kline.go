@@ -38,8 +38,16 @@ func (this *KlineSrv) WithMa(klines []*indicator.Kline) error {
 	ma := indicator.NewMa(5)
 	ma5 := ma.WithMa(klines)
 
+	ma = indicator.NewMa(10)
+	ma10 := ma.WithMa(klines)
+
+	ma = indicator.NewMa(20)
+	ma20 := ma.WithMa(klines)
+
 	for i := range klines {
 		klines[i].MA5 = ma5[i]
+		klines[i].MA10 = ma10[i]
+		klines[i].MA20 = ma20[i]
 	}
 	return nil
 }
