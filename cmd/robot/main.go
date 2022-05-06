@@ -5,7 +5,7 @@ import (
 	"time"
 
 	_ "github.com/LogicHou/bftr/internal/store"
-	strategy "github.com/LogicHou/bftr/strategy/kdj"
+	"github.com/LogicHou/bftr/strategy/kdj"
 	"github.com/LogicHou/bftr/workerpool"
 )
 
@@ -14,7 +14,7 @@ func main() {
 
 	time.Sleep(2 * time.Second)
 	err := p.Schedule(func() {
-		strategyKDJ := strategy.NewStrategyKDJ()
+		strategyKDJ := kdj.NewStrategyKDJ()
 		strategyKDJ.Run()
 	})
 	if err != nil {

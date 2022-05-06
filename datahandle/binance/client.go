@@ -3,12 +3,12 @@ package binance
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/LogicHou/bftr/internal/config"
 	"github.com/adshao/go-binance/v2"
 	"github.com/adshao/go-binance/v2/futures"
+	"github.com/pkg/errors"
 )
 
 var (
@@ -24,8 +24,8 @@ func init() {
 
 type binanceClient struct {
 	WsKlineCh chan *futures.WsKlineEvent
-	DoneC   chan struct{}
-	StopC   chan struct{}
+	DoneC     chan struct{}
+	StopC     chan struct{}
 }
 
 func NewClient() (*binanceClient, error) {
@@ -37,7 +37,7 @@ func NewClient() (*binanceClient, error) {
 			bc.WsKlineCh <- event
 		},
 		func(err error) {
-			log.Println(time.Now().Format("2006-01-02 15:04:05"), "errmsg:", err)
+			err = errors.Errorf(time.Now().Format("2006-01-02 15:04:05"), "errmsg:", err)
 		})
 	if err != nil {
 		err = fmt.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: ", err)
