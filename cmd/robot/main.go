@@ -5,7 +5,7 @@ import (
 	"time"
 
 	_ "github.com/LogicHou/bftr/internal/store"
-	"github.com/LogicHou/bftr/strategy"
+	strategy "github.com/LogicHou/bftr/strategy/kdj"
 	"github.com/LogicHou/bftr/workerpool"
 )
 

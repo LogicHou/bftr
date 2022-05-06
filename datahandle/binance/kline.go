@@ -2,13 +2,20 @@ package binance
 
 import (
 	"context"
-	"errors"
 
 	"github.com/LogicHou/bftr/indicator"
 	"github.com/LogicHou/bftr/utils"
 )
 
 type KlineSrv struct {
+	Interval string
+}
+
+func NewKlineSrv() *KlineSrv {
+	ks := &KlineSrv{
+		Interval: cfg.Interval,
+	}
+	return ks
 }
 
 func (this *KlineSrv) Get(limit int) ([]*indicator.Kline, error) {
@@ -34,7 +41,7 @@ func (this *KlineSrv) Get(limit int) ([]*indicator.Kline, error) {
 	return ks, nil
 }
 
-func (this *KlineSrv) WithMa(klines []*indicator.Kline) error {
+func (this *KlineSrv) WithMa(klines []*indicator.Kline) {
 	ma := indicator.NewMa(5)
 	ma5 := ma.WithMa(klines)
 
@@ -49,18 +56,13 @@ func (this *KlineSrv) WithMa(klines []*indicator.Kline) error {
 		klines[i].MA10 = ma10[i]
 		klines[i].MA20 = ma20[i]
 	}
-	return nil
 }
 
-func (this *KlineSrv) WithKdj(klines []*indicator.Kline) error {
+func (this *KlineSrv) WithKdj(klines []*indicator.Kline) {
 	kdj := indicator.NewKdj(9, 3, 3)
 	k, d, _ := kdj.WithKdj(klines)
-	if len(klines) != len(k) {
-		return errors.New("the comparison objects are not equal")
-	}
 	for i := range klines {
 		klines[i].K = utils.FRound2(k[i])
 		klines[i].D = utils.FRound2(d[i])
 	}
-	return nil
 }
