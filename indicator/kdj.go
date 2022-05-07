@@ -47,7 +47,9 @@ func (this *Kdj) WithKdj(bids []*Kline) (k, d, j []float64) {
 	l := len(bids)
 	rsv := make([]float64, l)
 	j = make([]float64, l)
-	rsv[0] = 50.0
+	if rsv[0] == 0 {
+		rsv[0] = 50.0
+	}
 	for i := 1; i < l; i++ {
 		m := i + 1 - this.n1
 		if m < 0 {

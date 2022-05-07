@@ -12,30 +12,17 @@ import (
 )
 
 type globalData struct {
+	margin      float64
 	interval    string
+	leverage    float64
 	restKlines  []*indicator.Kline
 	posAmt      float64
 	posQty      float64
 	entryPrice  float64
-	leverage    float64
 	posSide     futures.SideType
 	stopLoss    float64
-	closeMA     int
 	refreshTime map[string]int64
 	wsk
-}
-
-var _g = &globalData{ //三没用全局变量应付下，@todo 后期通过数据库或者redis持久化
-	interval:    "15m",
-	restKlines:  nil,
-	posAmt:      0,                   // 持仓金额，值等于0的时候表示未持仓
-	posQty:      0,                   // 持仓次数，下单后refresh一次数据就+1，todo 后期如果使用多个goroutine监控则需要在+1的时候先上锁
-	entryPrice:  0,                   // 开仓均价
-	leverage:    0,                   // 当前杠杆倍数
-	posSide:     futures.SideTypeBuy, // 持仓的买卖方向
-	stopLoss:    0,                   // 止损数值
-	closeMA:     20,                  // 止损均线值
-	refreshTime: map[string]int64{"30m": 3603000, "15m": 1803000, "5m": 603000},
 }
 
 type wsk struct {
@@ -47,6 +34,18 @@ type wsk struct {
 	cma float64
 }
 
+var _g = &globalData{ //三没用全局变量应付下，@todo 后期通过数据库或者redis持久化
+	interval:    "15m",
+	restKlines:  nil,
+	posAmt:      0,                   // 持仓金额，值等于0的时候表示未持仓
+	posQty:      0,                   // 持仓次数，下单后refresh一次数据就+1，todo 后期如果使用多个goroutine监控则需要在+1的时候先上锁
+	entryPrice:  0,                   // 开仓均价
+	leverage:    0,                   // 当前杠杆倍数
+	posSide:     futures.SideTypeBuy, // 持仓的买卖方向，默认为买方向
+	stopLoss:    0,                   // 止损数值
+	refreshTime: map[string]int64{"30m": 3603000, "15m": 1803000, "5m": 603000},
+}
+
 type KDJ struct {
 }
 
@@ -55,6 +54,7 @@ func NewStrategyKDJ() *KDJ {
 }
 
 func (this *KDJ) Run() error {
+
 	err := refreshSomeData()
 	if err != nil {
 		return err
@@ -70,72 +70,119 @@ func (this *KDJ) Run() error {
 		return err
 	}
 	tradeSrv := binance.NewTradeSrv()
-	go func() {
-		lastRsk := _g.restKlines[len(_g.restKlines)-1]
 
-		for k := range bclient.WsKlineCh {
-			_g.wsk.c = utils.StrToF64(k.Kline.Close)
-			_g.wsk.h = utils.StrToF64(k.Kline.High)
-			_g.wsk.l = utils.StrToF64(k.Kline.Low)
-			// _g.wsk.v = utils.StrToF64(k.Kline.Volume) // 用不到成交量先注释掉
-			_g.wsk.E = k.Time
-			ma := indicator.NewMa(_g.closeMA)
-			_g.wsk.cma = ma.CurrentMa(_g.restKlines, _g.wsk.c)
+	lastRsk := _g.restKlines[len(_g.restKlines)-1]
 
-			if (_g.wsk.E - lastRsk.OpenTime) > _g.refreshTime[_g.interval] {
-				refreshSomeData()
-				if _g.restKlines[len(_g.restKlines)-1].OpenTime == lastRsk.OpenTime {
-					time.Sleep(6 * time.Second)
-					continue
-				}
-				lastRsk = _g.restKlines[len(_g.restKlines)-1]
-				_g.posQty += 1
+	for k := range bclient.WsKlineCh {
+		_g.wsk.c = utils.StrToF64(k.Kline.Close)
+		_g.wsk.h = utils.StrToF64(k.Kline.High)
+		_g.wsk.l = utils.StrToF64(k.Kline.Low)
+		// _g.wsk.v = utils.StrToF64(k.Kline.Volume) // 用不到成交量先注释掉
+		_g.wsk.E = k.Time
+		ma := indicator.NewMa(tradeSrv.CloseMa)
+		_g.wsk.cma = ma.CurMa(_g.restKlines, _g.wsk.c)
+
+		// 刷新数据节点
+		if (_g.wsk.E - lastRsk.OpenTime) > _g.refreshTime[_g.interval] {
+			refreshSomeData()
+			if _g.restKlines[len(_g.restKlines)-1].OpenTime == lastRsk.OpenTime {
+				time.Sleep(6 * time.Second) // @godo 改成goroutine形式
+				continue
 			}
-			fmt.Println(_g.wsk.c)
-			// 开仓逻辑
-			// @todo 判断下单条件是否满足
-			// @todo 判断交易方向
-			// @todo 调用下单（市价单）方法
-			// @todo 判断止损条件是否满足
-			// @todo 调用止损方法
-			_g.stopLoss, _ = findFrontHigh(_g.restKlines, futures.SideTypeSell) // 开仓的时候才计算这个止损
+			lastRsk = _g.restKlines[len(_g.restKlines)-1]
+			_g.posQty += 1
+		}
 
-			// 止盈逻辑，@todo 迁移到独立的goroutine中
-			if _g.posQty >= 3 {
+		// 开仓逻辑
+		// @todo 现在的是过程方式写法，行情数据会在判断流中被阻塞，后面改成通过goroutine联动
+		if _g.posAmt == 0 {
+			ma := indicator.NewMa(tradeSrv.OpenSideMa)
+			oma := ma.CurMa(_g.restKlines, _g.wsk.c)
+			if _g.wsk.c > oma {
+				_g.posSide = futures.SideTypeBuy
+			} else if _g.wsk.c < oma {
+				_g.posSide = futures.SideTypeSell
+			} else {
+				continue
+			}
+
+			kdj := indicator.NewKdj(9, 3, 3)
+			// @todo 这里不是很好的解决方案，后面再改进
+			tmpks := append(_g.restKlines, &indicator.Kline{
+				Close: _g.wsk.c,
+				High:  _g.wsk.h,
+				Low:   _g.wsk.l,
+			})
+			curK, _, _ := kdj.WithKdj(tmpks)
+
+			// 开仓点
+			if openCondition(_g.posSide, curK[len(curK)-1], lastRsk, tradeSrv) {
+				_g.stopLoss, err = findFrontHigh(_g.restKlines, futures.SideTypeSell)
+				if err != nil {
+					return err
+				}
+
+				qty := tradeSrv.CalcMqrginQty(_g.margin, _g.leverage, _g.wsk.c)
 				switch _g.posSide {
 				case futures.SideTypeBuy:
-					if _g.wsk.c < _g.wsk.cma {
-						tradeSrv.ClosePosition(_g.posAmt)
-						// @todo 记录日志，重置一些数据
-					}
+					tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, _g.stopLoss)
 				case futures.SideTypeSell:
-					if _g.wsk.c > _g.wsk.cma {
-						tradeSrv.ClosePosition(_g.posAmt)
-						// @todo 记录日志，重置一些数据
-					}
+					tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, _g.stopLoss)
 				}
 			}
+			continue
+		}
 
-			// 止损逻辑，@todo 迁移到独立的goroutine中
+		// 止盈逻辑，@todo 迁移到独立的goroutine中
+		if _g.posQty >= 3 {
 			switch _g.posSide {
 			case futures.SideTypeBuy:
-				if _g.wsk.c < _g.stopLoss {
+				if _g.wsk.c < _g.wsk.cma {
 					tradeSrv.ClosePosition(_g.posAmt)
 					// @todo 记录日志，重置一些数据
 				}
 			case futures.SideTypeSell:
-				if _g.wsk.c > _g.stopLoss {
+				if _g.wsk.c > _g.wsk.cma {
 					tradeSrv.ClosePosition(_g.posAmt)
 					// @todo 记录日志，重置一些数据
 				}
 			}
 		}
-	}()
+
+		// 止损逻辑，@todo 迁移到独立的goroutine中
+		switch _g.posSide {
+		case futures.SideTypeBuy:
+			if _g.wsk.c < _g.stopLoss {
+				tradeSrv.ClosePosition(_g.posAmt)
+				// @todo 记录日志，重置一些数据
+			}
+		case futures.SideTypeSell:
+			if _g.wsk.c > _g.stopLoss {
+				tradeSrv.ClosePosition(_g.posAmt)
+				// @todo 记录日志，重置一些数据
+			}
+		}
+	}
 
 	for {
 		<-bclient.DoneC
 		return nil
 	}
+}
+
+func openCondition(side futures.SideType, curK float64, lastRsk *indicator.Kline, tradeSrv *binance.TradeSrv) bool {
+	// @todo1 补充符合openK3的开仓条件
+	switch side {
+	case futures.SideTypeBuy:
+		if lastRsk.K < tradeSrv.OpenK1 && curK > tradeSrv.OpenK1 {
+			return true
+		}
+	case futures.SideTypeSell:
+		if lastRsk.K > tradeSrv.OpenK2 && curK < tradeSrv.OpenK2 {
+			return true
+		}
+	}
+	return false
 }
 
 func refreshSomeData() error {

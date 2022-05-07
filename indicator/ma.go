@@ -32,7 +32,7 @@ func (this *Ma) WithMa(bids []*Kline) (ma []float64) {
 	return
 }
 
-func (this *Ma) CurrentMa(bids []*Kline, curClose float64) float64 {
+func (this *Ma) CurMa(bids []*Kline, curClose float64) float64 {
 	total := curClose
 	for _, v := range bids[len(bids)-(this.n1-1):] {
 		total += v.Close
