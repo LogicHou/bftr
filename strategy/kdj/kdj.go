@@ -37,12 +37,12 @@ type wsk struct {
 var _g = &globalData{ //三没用全局变量应付下，@todo 后期通过数据库或者redis持久化
 	interval:    "15m",
 	restKlines:  nil,
-	posAmt:      0,                   // 持仓金额，值等于0的时候表示未持仓
-	posQty:      0,                   // 持仓次数，下单后refresh一次数据就+1，todo 后期如果使用多个goroutine监控则需要在+1的时候先上锁
-	entryPrice:  0,                   // 开仓均价
-	leverage:    0,                   // 当前杠杆倍数
-	posSide:     futures.SideTypeBuy, // 持仓的买卖方向，默认为买方向
-	stopLoss:    0,                   // 止损数值
+	posAmt:      0,  // 持仓金额，值等于0的时候表示未持仓
+	posQty:      0,  // 持仓次数，下单后refresh一次数据就+1，todo 后期如果使用多个goroutine监控则需要在+1的时候先上锁
+	entryPrice:  0,  // 开仓均价
+	leverage:    0,  // 当前杠杆倍数
+	posSide:     "", // 持仓的买卖方向
+	stopLoss:    0,  // 止损数值
 	refreshTime: map[string]int64{"30m": 3603000, "15m": 1803000, "5m": 603000},
 }
 
@@ -126,8 +126,10 @@ func (this *KDJ) Run() error {
 				switch _g.posSide {
 				case futures.SideTypeBuy:
 					tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, _g.stopLoss)
+					_g.posAmt, _g.entryPrice, _g.leverage, _g.posSide = tradeSrv.GetPostionRisk()
 				case futures.SideTypeSell:
 					tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, _g.stopLoss)
+					_g.posAmt, _g.entryPrice, _g.leverage, _g.posSide = tradeSrv.GetPostionRisk()
 				}
 			}
 			continue
@@ -139,14 +141,17 @@ func (this *KDJ) Run() error {
 			case futures.SideTypeBuy:
 				if _g.wsk.c < _g.wsk.cma {
 					tradeSrv.ClosePosition(_g.posAmt)
+					resetSomeData()
 					// @todo 记录日志，重置一些数据
 				}
 			case futures.SideTypeSell:
 				if _g.wsk.c > _g.wsk.cma {
 					tradeSrv.ClosePosition(_g.posAmt)
+					resetSomeData()
 					// @todo 记录日志，重置一些数据
 				}
 			}
+			continue
 		}
 
 		// 止损逻辑，@todo 迁移到独立的goroutine中
@@ -154,11 +159,13 @@ func (this *KDJ) Run() error {
 		case futures.SideTypeBuy:
 			if _g.wsk.c < _g.stopLoss {
 				tradeSrv.ClosePosition(_g.posAmt)
+				resetSomeData()
 				// @todo 记录日志，重置一些数据
 			}
 		case futures.SideTypeSell:
 			if _g.wsk.c > _g.stopLoss {
 				tradeSrv.ClosePosition(_g.posAmt)
+				resetSomeData()
 				// @todo 记录日志，重置一些数据
 			}
 		}
@@ -203,6 +210,13 @@ func refreshSomeData() error {
 	klineSrv.WithMa(_g.restKlines)
 
 	return nil
+}
+
+// 重置数据
+func resetSomeData() {
+	_g.stopLoss = 0
+	_g.posQty = 0
+	_g.posSide = ""
 }
 
 func findFrontHigh(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {

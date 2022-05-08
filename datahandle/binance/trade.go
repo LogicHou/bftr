@@ -106,3 +106,27 @@ func (b *TradeSrv) ClosePosition(posAmt float64) {
 		return
 	}
 }
+
+// 获取持仓信息 RestAPI
+// 简言之, 您应该通过相关的rest接口( GET /fapi/v2/account 和 GET /fapi/v2/positionRisk) 获取资产和头寸的全量信息;
+// 通过Websocket USER-DATA-STREAM 中的事件ACCOUNT_UPDATE对本地缓存的资产或头寸数据进行增量更新。
+// https://binance-docs.github.io/apidocs/futures/cn/#v2-user_data-2
+// https://binance-docs.github.io/apidocs/futures/cn/#v2-user_data-3
+func (b *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverage float64, posSide futures.SideType) {
+	res, err := client.NewGetPositionRiskService().Symbol(cfg.Symbol).Do(context.Background())
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	posAmt = utils.StrToF64(res[0].PositionAmt)
+	entryPrice = utils.StrToF64(res[0].EntryPrice)
+	leverage = utils.StrToF64(res[0].Leverage)
+
+	if posAmt > 0 {
+		posSide = futures.SideTypeBuy
+	}
+	if posAmt < 0 {
+		posSide = futures.SideTypeSell
+	}
+	return
+}
