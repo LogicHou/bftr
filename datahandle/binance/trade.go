@@ -10,21 +10,23 @@ import (
 )
 
 type TradeSrv struct {
-	Margin     float64
-	OpenSideMa int
-	CloseMa    int
-	OpenK1     float64
-	OpenK2     float64
-	OpenK3     float64
+	Margin       float64
+	OpenSideMa   int
+	PosQtyUlimit int
+	CloseMa      int
+	OpenK1       float64
+	OpenK2       float64
+	OpenK3       float64
 }
 
 func NewTradeSrv() *TradeSrv {
 	return &TradeSrv{
-		OpenSideMa: cfg.OpenSideMa,
-		CloseMa:    cfg.CloseMa,
-		OpenK1:     cfg.OpenK1,
-		OpenK2:     cfg.OpenK2,
-		OpenK3:     cfg.OpenK3,
+		OpenSideMa:   cfg.OpenSideMa,
+		PosQtyUlimit: cfg.PosQtyUlimit,
+		CloseMa:      cfg.CloseMa,
+		OpenK1:       cfg.OpenK1,
+		OpenK2:       cfg.OpenK2,
+		OpenK3:       cfg.OpenK3,
 	}
 }
 

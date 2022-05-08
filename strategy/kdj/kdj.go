@@ -17,7 +17,7 @@ type globalData struct {
 	leverage    float64
 	restKlines  []*indicator.Kline
 	posAmt      float64
-	posQty      float64
+	posQty      int
 	entryPrice  float64
 	posSide     futures.SideType
 	stopLoss    float64
@@ -86,7 +86,7 @@ func (this *KDJ) Run() error {
 		if (_g.wsk.E - lastRsk.OpenTime) > _g.refreshTime[_g.interval] {
 			refreshSomeData()
 			if _g.restKlines[len(_g.restKlines)-1].OpenTime == lastRsk.OpenTime {
-				time.Sleep(6 * time.Second) // @godo 改成goroutine形式
+				time.Sleep(6 * time.Second) // @todo 改成goroutine形式
 				continue
 			}
 			lastRsk = _g.restKlines[len(_g.restKlines)-1]
@@ -134,7 +134,7 @@ func (this *KDJ) Run() error {
 		}
 
 		// 止盈逻辑，@todo 迁移到独立的goroutine中
-		if _g.posQty >= 3 {
+		if _g.posQty > tradeSrv.PosQtyUlimit {
 			switch _g.posSide {
 			case futures.SideTypeBuy:
 				if _g.wsk.c < _g.wsk.cma {
@@ -171,14 +171,19 @@ func (this *KDJ) Run() error {
 }
 
 func openCondition(side futures.SideType, curK float64, lastRsk *indicator.Kline, tradeSrv *binance.TradeSrv) bool {
-	// @todo1 补充符合openK3的开仓条件
 	switch side {
 	case futures.SideTypeBuy:
 		if lastRsk.K < tradeSrv.OpenK1 && curK > tradeSrv.OpenK1 {
 			return true
 		}
+		if lastRsk.K < tradeSrv.OpenK3 && curK > tradeSrv.OpenK3 {
+			return true
+		}
 	case futures.SideTypeSell:
 		if lastRsk.K > tradeSrv.OpenK2 && curK < tradeSrv.OpenK2 {
+			return true
+		}
+		if lastRsk.K > tradeSrv.OpenK3 && curK < tradeSrv.OpenK3 {
 			return true
 		}
 	}
