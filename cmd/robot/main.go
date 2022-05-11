@@ -1,27 +1,48 @@
 package main
 
 import (
-	"fmt"
-	"time"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
 
 	_ "github.com/LogicHou/bftr/internal/store"
-	"github.com/LogicHou/bftr/strategy/kdj"
-	"github.com/LogicHou/bftr/workerpool"
+	"github.com/LogicHou/bftr/server"
+	"github.com/LogicHou/bftr/store/factory"
 )
 
 func main() {
-	p := workerpool.New(1, workerpool.WithPreAllocWorkers(true), workerpool.WithBlock(true))
-
-	time.Sleep(2 * time.Second)
-	err := p.Schedule(func() {
-		strategyKDJ := kdj.NewStrategyKDJ()
-		strategyKDJ.Run()
-	})
+	s, err := factory.New("mem")
 	if err != nil {
-		fmt.Printf("task kdj: error: %s\n", err.Error())
+		panic(err)
 	}
-	fmt.Println("workerpool start ok")
+	srv := server.NewTradeServer(s)
+	errChan := srv.ErrChan
+	err = srv.Serve()
+	if err != nil {
+		log.Println("trader server start failed:", err)
+		return
+	}
+	log.Println("trader server start ok")
 
-	p.Free()
+	srv.Handler()
+	log.Println("trader handler start ok")
 
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
+
+	select { // 监视来自errChan以及c的事件
+	case err = <-errChan:
+		log.Println("trader server run failed:", err)
+		return
+	case <-c:
+		log.Println("program is exiting...")
+		// @todo shutdown server
+	}
+
+	if err != nil {
+		log.Println("program exit error:", err)
+		return
+	}
+	log.Println("program exit ok")
 }

@@ -3,12 +3,24 @@ package store
 import (
 	"sync"
 
+	bds "github.com/LogicHou/bftr/datasrv/binance"
 	tstore "github.com/LogicHou/bftr/store"
 	factory "github.com/LogicHou/bftr/store/factory"
+	"github.com/adshao/go-binance/v2/futures"
 )
 
 func init() {
-	factory.Register("mem", &MemStore{})
+	factory.Register("mem", &MemStore{
+		trader: &tstore.Trader{
+			Leverage:    1, // 当前杠杆倍数
+			HistKlines:  nil,
+			PosAmt:      0,                   // 持仓金额，值等于0的时候表示未持仓
+			PosQty:      0,                   // 持仓K次数
+			EntryPrice:  0,                   // 开仓均价
+			PosSide:     futures.SideTypeBuy, // 持仓的买卖方向，默认为买
+			StopLoss:    0,                   // 止损数值
+			RefreshTime: map[string]int64{"30m": 3603000, "15m": 1803000, "5m": 603000},
+		}})
 }
 
 type MemStore struct {
@@ -16,20 +28,32 @@ type MemStore struct {
 	trader *tstore.Trader
 }
 
-// 市价下单函数 RestAPI
-func (ms *MemStore) CreateMarketOrder(trader *tstore.Trader) error {
+func (ms *MemStore) Get() *tstore.Trader {
+	ms.RLock()
+	defer ms.RUnlock()
+
+	return ms.trader
+}
+
+func (ms *MemStore) Update() error {
+	ms.Lock()
+	defer ms.Unlock()
+
+	var err error
+	klineSrv := bds.NewKlineSrv()
+	ms.trader.Interval = klineSrv.Interval
+	ms.trader.HistKlines, err = klineSrv.Get(41)
+	if err != nil {
+		return err
+	}
+
+	klineSrv.WithKdj(ms.trader.HistKlines)
+	klineSrv.WithMa(ms.trader.HistKlines)
 
 	return nil
 }
 
-// 平仓现有的所有仓位函数
-func (ms *MemStore) ClosePosition(trader *tstore.Trader) error {
-
-	return nil
-}
-
-// 可能用来刷新一些数据
-func (ms *MemStore) RefreshData(trader *tstore.Trader) error {
+func (ms *MemStore) Reset() error {
 
 	return nil
 }

@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/LogicHou/bftr/datahandle/binance"
+	"github.com/LogicHou/bftr/datasrv/binance"
 	"github.com/LogicHou/bftr/indicator"
 	"github.com/LogicHou/bftr/utils"
 	"github.com/adshao/go-binance/v2/futures"
@@ -64,7 +64,7 @@ func (this *KDJ) Run() error {
 	// for _, v := range _restKlines {
 	// 	fmt.Println("bbb", v.Close, v.K, v.MA5, v.MA20)
 	// }
-	bclient, err := binance.NewClient()
+	bclient, err := binance.NewSrv()
 	if err != nil {
 		err = fmt.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: ", err)
 		return err
@@ -73,7 +73,7 @@ func (this *KDJ) Run() error {
 
 	lastRsk := _g.restKlines[len(_g.restKlines)-1]
 
-	for k := range bclient.WsKlineCh {
+	for k := range bclient.WskChan {
 		_g.wsk.c = utils.StrToF64(k.Kline.Close)
 		_g.wsk.h = utils.StrToF64(k.Kline.High)
 		_g.wsk.l = utils.StrToF64(k.Kline.Low)

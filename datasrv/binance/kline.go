@@ -9,11 +9,13 @@ import (
 
 type KlineSrv struct {
 	Interval string
+	Leverage float64
 }
 
 func NewKlineSrv() *KlineSrv {
 	ks := &KlineSrv{
 		Interval: cfg.Interval,
+		Leverage: cfg.Leverage,
 	}
 	return ks
 }

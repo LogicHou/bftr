@@ -3,6 +3,7 @@ package store
 import (
 	"errors"
 
+	"github.com/LogicHou/bftr/indicator"
 	"github.com/adshao/go-binance/v2/futures"
 )
 
@@ -12,41 +13,33 @@ var (
 )
 
 type Trader struct {
-	pid
-	wsk
+	ApiKey      string
+	SecretKey   string
+	Symbol      string
+	Margin      float64
+	Interval    string
+	Leverage    float64
+	HistKlines  []*indicator.Kline
+	PosAmt      float64
+	PosQty      int
+	EntryPrice  float64
+	PosSide     futures.SideType
+	StopLoss    float64
+	RefreshTime map[string]int64
+	Wsk
 }
 
-// 一些负责控制下单平仓的控制参数
-type pid struct {
-	margin      float64
-	marginRatio float64
-	maxVARS5    float64
-	maxVARS4    float64
-
-	posAmt         float64
-	entryPrice     float64
-	leverage       float64
-	posSide        futures.SideType
-	stopLoss       float64
-	firstStopLoss  float64
-	gainQty        int
-	interval       string
-	openVolume     float64
-	initOV         float64
-	closeMA        int
-	initCMA        int
-	boxMarginLimit int
-}
-
-// websocket中ticket的详细数据
-type wsk struct {
-	h  float64
-	l  float64
-	c  float64
-	v  float64
-	E  int64
-	cm float64
+type Wsk struct {
+	H   float64
+	L   float64
+	C   float64
+	V   float64
+	E   int64
+	Cma float64
 }
 
 type Store interface {
+	Get() (*Trader)
+	Update() error
+	Reset() error
 }

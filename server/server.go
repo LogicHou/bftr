@@ -1,0 +1,217 @@
+package server
+
+import (
+	"errors"
+	"time"
+
+	"github.com/LogicHou/bftr/datasrv/binance"
+	bds "github.com/LogicHou/bftr/datasrv/binance"
+	"github.com/LogicHou/bftr/indicator"
+	"github.com/LogicHou/bftr/store"
+	"github.com/LogicHou/bftr/utils"
+	"github.com/adshao/go-binance/v2/futures"
+)
+
+type TradeServer struct {
+	s       store.Store
+	ErrChan chan error
+	srv     *bds.Server
+}
+
+func NewTradeServer(s store.Store) *TradeServer {
+	srv := &TradeServer{
+		s:       s,
+		ErrChan: make(chan error),
+		srv: &bds.Server{
+			WskChan: make(chan *futures.WsKlineEvent),
+		},
+	}
+	//refreshSomeData
+	srv.updateHandler()
+
+	return srv
+}
+
+func (ts *TradeServer) Serve() error {
+	var err error
+	go func() {
+		err = ts.srv.Serve()
+		ts.ErrChan <- err
+	}()
+
+	select {
+	case err = <-ts.ErrChan:
+		return err
+	case <-time.After(time.Second):
+		return nil
+	}
+}
+
+func (ts *TradeServer) Handler() {
+	var err error
+	td := ts.s.Get()
+	tradeSrv := bds.NewTradeSrv()
+	lastRsk := td.HistKlines[len(td.HistKlines)-1]
+
+	go func() {
+		for k := range ts.srv.WskChan {
+			td.Wsk.C = utils.StrToF64(k.Kline.Close)
+			td.Wsk.H = utils.StrToF64(k.Kline.High)
+			td.Wsk.L = utils.StrToF64(k.Kline.Low)
+			td.Wsk.E = k.Time
+			ma := indicator.NewMa(tradeSrv.CloseMa)
+			td.Wsk.Cma = ma.CurMa(td.HistKlines, td.Wsk.C)
+
+			// 刷新数据节点
+			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[td.Interval] {
+				ts.updateHandler()
+				if td.HistKlines[len(td.HistKlines)-1].OpenTime == lastRsk.OpenTime {
+					time.Sleep(6 * time.Second) // @todo 改成goroutine形式
+					continue
+				}
+				lastRsk = td.HistKlines[len(td.HistKlines)-1]
+			}
+
+			// 开仓逻辑
+			if td.PosAmt == 0 {
+				ma := indicator.NewMa(tradeSrv.OpenSideMa)
+				oma := ma.CurMa(td.HistKlines, td.Wsk.C)
+				if td.Wsk.C > oma {
+					td.PosSide = futures.SideTypeBuy
+				} else if td.Wsk.C < oma {
+					td.PosSide = futures.SideTypeSell
+				} else {
+					continue
+				}
+
+				kdj := indicator.NewKdj(9, 3, 3)
+				// @todo 这里不是很好的解决方案，后面再改进
+				tmpks := append(td.HistKlines, &indicator.Kline{
+					Close: td.Wsk.C,
+					High:  td.Wsk.H,
+					Low:   td.Wsk.L,
+				})
+				curK, _, _ := kdj.WithKdj(tmpks)
+
+				// 开仓点
+				if openCondition(td.PosSide, curK[len(curK)-1], lastRsk, tradeSrv) {
+					td.StopLoss, err = findFrontHigh(td.HistKlines, futures.SideTypeSell)
+					if err != nil {
+						ts.ErrChan <- err
+					}
+
+					qty := tradeSrv.CalcMqrginQty(td.Margin, td.Leverage, td.Wsk.C)
+					switch td.PosSide {
+					case futures.SideTypeBuy:
+						tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss)
+						td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide = tradeSrv.GetPostionRisk()
+					case futures.SideTypeSell:
+						tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss)
+						td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide = tradeSrv.GetPostionRisk()
+					}
+				}
+				continue
+			}
+
+			// 止盈逻辑
+			if td.PosQty > tradeSrv.PosQtyUlimit {
+				switch td.PosSide {
+				case futures.SideTypeBuy:
+					if td.Wsk.C < td.Wsk.Cma {
+						tradeSrv.ClosePosition(td.PosAmt)
+						ts.resetHandler()
+						// @todo 记录日志，重置一些数据
+					}
+				case futures.SideTypeSell:
+					if td.Wsk.C > td.Wsk.Cma {
+						tradeSrv.ClosePosition(td.PosAmt)
+						ts.resetHandler()
+						// @todo 记录日志，重置一些数据
+					}
+				}
+				continue
+			}
+
+			// 止损逻辑，@todo 迁移到独立的goroutine中
+			switch td.PosSide {
+			case futures.SideTypeBuy:
+				if td.Wsk.C < td.StopLoss {
+					tradeSrv.ClosePosition(td.PosAmt)
+					ts.resetHandler()
+					// @todo 记录日志，重置一些数据
+				}
+			case futures.SideTypeSell:
+				if td.Wsk.C > td.StopLoss {
+					tradeSrv.ClosePosition(td.PosAmt)
+					ts.resetHandler()
+					// @todo 记录日志，重置一些数据
+				}
+			}
+
+			td.PosQty += 1
+		}
+	}()
+}
+
+func (ts *TradeServer) getHandler() error {
+	ts.s.Get()
+	return nil
+}
+
+func (ts *TradeServer) updateHandler() error {
+	ts.s.Update()
+	return nil
+}
+
+func (ts *TradeServer) resetHandler() error {
+	ts.s.Update()
+	return nil
+}
+
+func openCondition(side futures.SideType, curK float64, lastRsk *indicator.Kline, tradeSrv *binance.TradeSrv) bool {
+	switch side {
+	case futures.SideTypeBuy:
+		if lastRsk.K < tradeSrv.OpenK1 && curK > tradeSrv.OpenK1 {
+			return true
+		}
+		if lastRsk.K < tradeSrv.OpenK3 && curK > tradeSrv.OpenK3 {
+			return true
+		}
+	case futures.SideTypeSell:
+		if lastRsk.K > tradeSrv.OpenK2 && curK < tradeSrv.OpenK2 {
+			return true
+		}
+		if lastRsk.K > tradeSrv.OpenK3 && curK < tradeSrv.OpenK3 {
+			return true
+		}
+	}
+	return false
+}
+
+func findFrontHigh(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {
+	if posSide == futures.SideTypeBuy {
+		ksLen := len(klines)
+		low := klines[ksLen-1].Low
+		for i := range klines {
+			if klines[ksLen-i-1].Low < low &&
+				klines[ksLen-i-2].Low > klines[ksLen-i-1].Low {
+				return klines[ksLen-i-1].Low, nil
+			}
+		}
+		return 0.0, errors.New("not found stoploss condition")
+	}
+
+	if posSide == futures.SideTypeSell {
+		ksLen := len(klines)
+		high := klines[ksLen-1].High
+		for i := range klines {
+			if klines[ksLen-i-1].High > high &&
+				klines[ksLen-i-2].High < klines[ksLen-i-1].High {
+				return klines[ksLen-i-1].High, nil
+			}
+		}
+		return 0.0, errors.New("not found stoploss condition")
+	}
+
+	return 0.0, errors.New("not found stoploss condition")
+}
