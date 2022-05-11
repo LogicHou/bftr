@@ -23,8 +23,6 @@ func init() {
 
 type Server struct {
 	WskChan chan *futures.WsKlineEvent
-	// DoneChan chan struct{}
-	// StopChan chan struct{}
 }
 
 func (srv *Server) Serve() error {

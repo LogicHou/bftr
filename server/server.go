@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"log"
 	"time"
 
 	"github.com/LogicHou/bftr/datasrv/binance"
@@ -47,13 +48,14 @@ func (ts *TradeServer) Serve() error {
 	}
 }
 
-func (ts *TradeServer) Handler() {
+func (ts *TradeServer) ListenAndTrans() {
 	var err error
 	td := ts.s.Get()
 	tradeSrv := bds.NewTradeSrv()
 	lastRsk := td.HistKlines[len(td.HistKlines)-1]
 
 	go func() {
+		log.Println("listening transactions...")
 		for k := range ts.srv.WskChan {
 			td.Wsk.C = utils.StrToF64(k.Kline.Close)
 			td.Wsk.H = utils.StrToF64(k.Kline.High)
@@ -63,7 +65,7 @@ func (ts *TradeServer) Handler() {
 			td.Wsk.Cma = ma.CurMa(td.HistKlines, td.Wsk.C)
 
 			// 刷新数据节点
-			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[td.Interval] {
+			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[tradeSrv.Interval] {
 				ts.updateHandler()
 				if td.HistKlines[len(td.HistKlines)-1].OpenTime == lastRsk.OpenTime {
 					time.Sleep(6 * time.Second) // @todo 改成goroutine形式
@@ -95,18 +97,21 @@ func (ts *TradeServer) Handler() {
 
 				// 开仓点
 				if openCondition(td.PosSide, curK[len(curK)-1], lastRsk, tradeSrv) {
-					td.StopLoss, err = findFrontHigh(td.HistKlines, futures.SideTypeSell)
+					log.Println("beging creating order...")
+
 					if err != nil {
 						ts.ErrChan <- err
 					}
 
-					qty := tradeSrv.CalcMqrginQty(td.Margin, td.Leverage, td.Wsk.C)
+					qty := tradeSrv.CalcMqrginQty(td.Wsk.C)
 					switch td.PosSide {
 					case futures.SideTypeBuy:
-						tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss)
+						td.StopLoss, err = findFrontHigh(td.HistKlines, futures.SideTypeBuy)
+						tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss-1)
 						td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide = tradeSrv.GetPostionRisk()
 					case futures.SideTypeSell:
-						tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss)
+						td.StopLoss, err = findFrontHigh(td.HistKlines, futures.SideTypeSell)
+						tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss+1)
 						td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide = tradeSrv.GetPostionRisk()
 					}
 				}
@@ -164,7 +169,7 @@ func (ts *TradeServer) updateHandler() error {
 }
 
 func (ts *TradeServer) resetHandler() error {
-	ts.s.Update()
+	ts.s.Reset()
 	return nil
 }
 

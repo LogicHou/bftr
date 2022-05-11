@@ -11,6 +11,8 @@ import (
 
 type TradeSrv struct {
 	Margin       float64
+	Interval     string
+	Leverage     float64
 	OpenSideMa   int
 	PosQtyUlimit int
 	CloseMa      int
@@ -21,6 +23,9 @@ type TradeSrv struct {
 
 func NewTradeSrv() *TradeSrv {
 	return &TradeSrv{
+		Margin:       cfg.Margin,
+		Interval:     cfg.Interval,
+		Leverage:     cfg.Leverage,
 		OpenSideMa:   cfg.OpenSideMa,
 		PosQtyUlimit: cfg.PosQtyUlimit,
 		CloseMa:      cfg.CloseMa,
@@ -30,33 +35,31 @@ func NewTradeSrv() *TradeSrv {
 	}
 }
 
-func (b *TradeSrv) CalcMqrginQty(margin float64, leverage float64, curClose float64) float64 {
-	if margin > 0 {
-		return utils.FRound(margin * leverage / curClose)
+func (t *TradeSrv) CalcMqrginQty(curClose float64) float64 {
+	if t.Margin > 0 {
+		return utils.FRound(t.Margin * t.Leverage / curClose)
 	}
 
 	return 0
 }
 
-func (b *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, firstStopLoss float64) {
+func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, maxStopLoss float64) {
 	// 取消所有挂单
 	err := client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
 		log.Println("createMarketOrder - 1:", err)
 		return
 	}
-	var sideStop futures.SideType
-	switch sideType {
-	case futures.SideTypeBuy:
+
+	sideStop := futures.SideTypeBuy
+	if sideType == futures.SideTypeSell {
 		sideStop = futures.SideTypeSell
-	case futures.SideTypeSell:
-		sideStop = futures.SideTypeBuy
 	}
 
 	// 预埋止损单 RestAPI
 	order, err := client.NewCreateOrderService().Symbol(cfg.Symbol).
 		Side(sideStop).Type("STOP_MARKET").
-		ClosePosition(true).StopPrice(utils.F64ToStr(utils.FRound2(firstStopLoss))).
+		ClosePosition(true).StopPrice(utils.F64ToStr(utils.FRound2(maxStopLoss))).
 		Do(context.Background())
 	if err != nil {
 		log.Println("createMarketOrder - 2:", err)
@@ -77,7 +80,7 @@ func (b *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, fir
 
 }
 
-func (b *TradeSrv) ClosePosition(posAmt float64) {
+func (t *TradeSrv) ClosePosition(posAmt float64) {
 	if posAmt == 0 {
 		return
 	}
@@ -112,7 +115,7 @@ func (b *TradeSrv) ClosePosition(posAmt float64) {
 // 通过Websocket USER-DATA-STREAM 中的事件ACCOUNT_UPDATE对本地缓存的资产或头寸数据进行增量更新。
 // https://binance-docs.github.io/apidocs/futures/cn/#v2-user_data-2
 // https://binance-docs.github.io/apidocs/futures/cn/#v2-user_data-3
-func (b *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverage float64, posSide futures.SideType) {
+func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverage float64, posSide futures.SideType) {
 	res, err := client.NewGetPositionRiskService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
 		log.Println(err)

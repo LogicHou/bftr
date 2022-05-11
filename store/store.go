@@ -13,11 +13,7 @@ var (
 )
 
 type Trader struct {
-	ApiKey      string
-	SecretKey   string
-	Symbol      string
 	Margin      float64
-	Interval    string
 	Leverage    float64
 	HistKlines  []*indicator.Kline
 	PosAmt      float64
@@ -39,7 +35,7 @@ type Wsk struct {
 }
 
 type Store interface {
-	Get() (*Trader)
+	Get() *Trader
 	Update() error
 	Reset() error
 }

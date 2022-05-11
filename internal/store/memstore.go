@@ -41,7 +41,6 @@ func (ms *MemStore) Update() error {
 
 	var err error
 	klineSrv := bds.NewKlineSrv()
-	ms.trader.Interval = klineSrv.Interval
 	ms.trader.HistKlines, err = klineSrv.Get(41)
 	if err != nil {
 		return err
@@ -54,6 +53,11 @@ func (ms *MemStore) Update() error {
 }
 
 func (ms *MemStore) Reset() error {
+	ms.Lock()
+	defer ms.Unlock()
 
+	ms.trader.StopLoss = 0
+	ms.trader.PosQty = 0
+	ms.trader.PosSide = futures.SideTypeBuy
 	return nil
 }

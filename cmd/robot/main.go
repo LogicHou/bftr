@@ -25,7 +25,7 @@ func main() {
 	}
 	log.Println("trader server start ok")
 
-	srv.Handler()
+	srv.ListenAndTrans()
 	log.Println("trader handler start ok")
 
 	c := make(chan os.Signal, 1)
