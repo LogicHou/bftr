@@ -175,7 +175,7 @@ func (ts *TradeServer) getHandler() *store.Trader {
 
 func (ts *TradeServer) updateHandler() error {
 	klineSrv := bds.NewKlineSrv()
-	histKlines, err := klineSrv.Get(41)
+	histKlines, err := klineSrv.Get()
 	if err != nil {
 		return err
 	}

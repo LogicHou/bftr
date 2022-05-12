@@ -14,9 +14,9 @@ func NewKlineSrv() *KlineSrv {
 	return &KlineSrv{}
 }
 
-func (this *KlineSrv) Get(limit int) ([]*indicator.Kline, error) {
+func (this *KlineSrv) Get() ([]*indicator.Kline, error) {
 	bklines, err := client.NewKlinesService().Symbol(cfg.Symbol).
-		Interval(cfg.Interval).Limit(limit).Do(context.Background())
+		Interval(cfg.Interval).Limit(cfg.HistRange).Do(context.Background())
 	if err != nil {
 		return nil, err
 	}
