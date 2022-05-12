@@ -129,6 +129,5 @@ func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverag
 	if posAmt < 0 {
 		posSide = futures.SideTypeSell
 	}
-	log.Panicln(posAmt, entryPrice, leverage, posSide)
 	return
 }

@@ -185,6 +185,11 @@ func (ts *TradeServer) updateHandler() error {
 
 	td := ts.getHandler()
 	td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
+	if err != nil {
+		return err
+	}
+
+	log.Println(td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
 
 	return nil
 }
