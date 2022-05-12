@@ -70,7 +70,10 @@ func (ts *TradeServer) ListenAndMonitor() error {
 			td.Wsk.H = utils.StrToF64(k.Kline.High)
 			td.Wsk.L = utils.StrToF64(k.Kline.Low)
 			td.Wsk.E = k.Time
-			td.Wsk.Cma = cmai.CurMa(td.HistKlines, td.Wsk.C)
+			td.Wsk.Cma, err = cmai.CurMa(td.HistKlines, td.Wsk.C)
+			if err != nil {
+				ts.ErrChan <- err
+			}
 
 			// 刷新数据节点
 			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[ts.tradeSrv.Interval] {
@@ -84,7 +87,10 @@ func (ts *TradeServer) ListenAndMonitor() error {
 
 			// 开仓逻辑
 			if td.PosAmt == 0 {
-				oma := omai.CurMa(td.HistKlines, td.Wsk.C)
+				oma, err := omai.CurMa(td.HistKlines, td.Wsk.C)
+				if err != nil {
+					ts.ErrChan <- err
+				}
 				if td.Wsk.C > oma {
 					td.PosSide = futures.SideTypeBuy
 				} else if td.Wsk.C < oma {

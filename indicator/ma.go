@@ -1,13 +1,13 @@
 package indicator
 
 import (
+	"github.com/pkg/errors"
+
 	"github.com/LogicHou/bftr/utils"
 )
 
 type Ma struct {
 	n1 int
-	n2 int
-	n3 int
 }
 
 // NewMa(5)
@@ -32,11 +32,14 @@ func (this *Ma) WithMa(bids []*Kline) (ma []float64) {
 	return
 }
 
-func (this *Ma) CurMa(bids []*Kline, curClose float64) float64 {
+func (this *Ma) CurMa(bids []*Kline, curClose float64) (float64, error) {
+	if len(bids) < this.n1 {
+		return 0, errors.Errorf("bids len big than ma.n1")
+	}
 	total := curClose
 	for _, v := range bids[len(bids)-(this.n1-1):] {
 		total += v.Close
 	}
 	ma := utils.FRound2(total / float64(this.n1))
-	return ma
+	return ma, nil
 }
