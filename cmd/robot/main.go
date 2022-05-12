@@ -25,8 +25,12 @@ func main() {
 	}
 	log.Println("trader server start ok")
 
-	srv.ListenAndMonitor()
-	log.Println("trader handler start ok")
+	err = srv.ListenAndMonitor()
+	if err != nil {
+		log.Println("trader monitor start failed:", err)
+		return
+	}
+	log.Println("trader monitor start ok")
 
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)

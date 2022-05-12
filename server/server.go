@@ -28,11 +28,6 @@ func NewTradeServer(s store.Store) *TradeServer {
 		},
 		tradeSrv: bds.NewTradeSrv(),
 	}
-	//refresh some data
-	err := srv.updateHandler()
-	if err != nil {
-		srv.ErrChan <- err
-	}
 
 	return srv
 }
@@ -54,22 +49,28 @@ func (ts *TradeServer) ListenAndServe() error {
 
 func (ts *TradeServer) ListenAndMonitor() error {
 	var err error
-	td := ts.getHandler()
+	//refresh some data
+	err = ts.updateHandler()
 	if err != nil {
-		return err
+		ts.ErrChan <- err
 	}
+	td := ts.getHandler()
+	// fmt.Println(td.HistKlines[39])
+
 	log.Println("Info: Data initialization succeeded!")
 
 	go func() {
 		log.Println("listening transactions...")
 		lastRsk := td.HistKlines[len(td.HistKlines)-1]
+		cmai := indicator.NewMa(ts.tradeSrv.CloseMa)
+		omai := indicator.NewMa(ts.tradeSrv.OpenSideMa)
+
 		for k := range ts.srv.WskChan {
 			td.Wsk.C = utils.StrToF64(k.Kline.Close)
 			td.Wsk.H = utils.StrToF64(k.Kline.High)
 			td.Wsk.L = utils.StrToF64(k.Kline.Low)
 			td.Wsk.E = k.Time
-			ma := indicator.NewMa(ts.tradeSrv.CloseMa)
-			td.Wsk.Cma = ma.CurMa(td.HistKlines, td.Wsk.C)
+			td.Wsk.Cma = cmai.CurMa(td.HistKlines, td.Wsk.C)
 
 			// 刷新数据节点
 			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[ts.tradeSrv.Interval] {
@@ -83,8 +84,7 @@ func (ts *TradeServer) ListenAndMonitor() error {
 
 			// 开仓逻辑
 			if td.PosAmt == 0 {
-				ma := indicator.NewMa(ts.tradeSrv.OpenSideMa)
-				oma := ma.CurMa(td.HistKlines, td.Wsk.C)
+				oma := omai.CurMa(td.HistKlines, td.Wsk.C)
 				if td.Wsk.C > oma {
 					td.PosSide = futures.SideTypeBuy
 				} else if td.Wsk.C < oma {
@@ -184,8 +184,6 @@ func (ts *TradeServer) updateHandler() error {
 	if err != nil {
 		return err
 	}
-
-	log.Println("updated, dates:", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
 
 	return nil
 }
