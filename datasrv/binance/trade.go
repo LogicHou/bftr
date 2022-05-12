@@ -7,6 +7,7 @@ import (
 
 	"github.com/LogicHou/bftr/utils"
 	"github.com/adshao/go-binance/v2/futures"
+	"github.com/pkg/errors"
 )
 
 type TradeSrv struct {
@@ -43,12 +44,11 @@ func (t *TradeSrv) CalcMqrginQty(curClose float64) float64 {
 	return 0
 }
 
-func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, maxStopLoss float64) {
+func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, maxStopLoss float64) error {
 	// 取消所有挂单
 	err := client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
-		log.Println("createMarketOrder - 1:", err)
-		return
+		return errors.Errorf("createMarketOrder - 1:", err)
 	}
 
 	sideStop := futures.SideTypeBuy
@@ -62,8 +62,7 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 		ClosePosition(true).StopPrice(utils.F64ToStr(utils.FRound2(maxStopLoss))).
 		Do(context.Background())
 	if err != nil {
-		log.Println("createMarketOrder - 2:", err)
-		return
+		return errors.Errorf("createMarketOrder - 2:", err)
 	}
 	log.Println("STOP_MARKET Order:", order)
 
@@ -73,11 +72,11 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 		Quantity(utils.F64ToStr(qty)).
 		Do(context.Background())
 	if err != nil {
-		log.Println("createMarketOrder - 3:", err)
-		return
+		return errors.Errorf("createMarketOrder - 3:", err)
 	}
 	log.Println("MARKET Order:", order)
 
+	return nil
 }
 
 func (t *TradeSrv) ClosePosition(posAmt float64) {
@@ -115,10 +114,9 @@ func (t *TradeSrv) ClosePosition(posAmt float64) {
 // 通过Websocket USER-DATA-STREAM 中的事件ACCOUNT_UPDATE对本地缓存的资产或头寸数据进行增量更新。
 // https://binance-docs.github.io/apidocs/futures/cn/#v2-user_data-2
 // https://binance-docs.github.io/apidocs/futures/cn/#v2-user_data-3
-func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverage float64, posSide futures.SideType) {
+func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverage float64, posSide futures.SideType, err error) {
 	res, err := client.NewGetPositionRiskService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
-		log.Println(err)
 		return
 	}
 	posAmt = utils.StrToF64(res[0].PositionAmt)
@@ -131,5 +129,6 @@ func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverag
 	if posAmt < 0 {
 		posSide = futures.SideTypeSell
 	}
+	log.Panicln(posAmt, entryPrice, leverage, posSide)
 	return
 }

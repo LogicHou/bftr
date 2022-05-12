@@ -3,7 +3,7 @@ package store
 import (
 	"sync"
 
-	bds "github.com/LogicHou/bftr/datasrv/binance"
+	"github.com/LogicHou/bftr/indicator"
 	tstore "github.com/LogicHou/bftr/store"
 	factory "github.com/LogicHou/bftr/store/factory"
 	"github.com/adshao/go-binance/v2/futures"
@@ -35,21 +35,11 @@ func (ms *MemStore) Get() *tstore.Trader {
 	return ms.trader
 }
 
-func (ms *MemStore) Update() error {
+func (ms *MemStore) Update(klines []*indicator.Kline) {
 	ms.Lock()
 	defer ms.Unlock()
 
-	var err error
-	klineSrv := bds.NewKlineSrv()
-	ms.trader.HistKlines, err = klineSrv.Get(41)
-	if err != nil {
-		return err
-	}
-
-	klineSrv.WithKdj(ms.trader.HistKlines)
-	klineSrv.WithMa(ms.trader.HistKlines)
-
-	return nil
+	ms.trader.HistKlines = klines
 }
 
 func (ms *MemStore) Reset() error {

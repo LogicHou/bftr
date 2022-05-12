@@ -33,7 +33,7 @@ func main() {
 
 	select { // 监视来自errChan以及c的事件
 	case err = <-errChan:
-		log.Println("trader server run failed:", err)
+		log.Println("trader server have some errors:", err)
 		return
 	case <-c:
 		log.Println("program is exiting...")

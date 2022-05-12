@@ -36,6 +36,6 @@ type Wsk struct {
 
 type Store interface {
 	Get() *Trader
-	Update() error
+	Update([]*indicator.Kline)
 	Reset() error
 }
