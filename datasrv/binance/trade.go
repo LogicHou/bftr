@@ -79,9 +79,9 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 	return nil
 }
 
-func (t *TradeSrv) ClosePosition(posAmt float64) {
+func (t *TradeSrv) ClosePosition(posAmt float64) error {
 	if posAmt == 0 {
-		return
+		return errors.Errorf("posAmt is zero")
 	}
 	qty := posAmt
 
@@ -96,17 +96,17 @@ func (t *TradeSrv) ClosePosition(posAmt float64) {
 		Quantity(utils.F64ToStr(qty)).
 		Do(context.Background())
 	if err != nil {
-		log.Println("closePosition1", err)
-		return
+		return errors.Errorf("closePosition1", err)
 	}
 
 	log.Println("ClosePosition:", order)
 
 	err = client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
-		log.Println("closePosition2", err)
-		return
+		return errors.Errorf("closePosition2", err)
 	}
+
+	return nil
 }
 
 // 获取持仓信息 RestAPI

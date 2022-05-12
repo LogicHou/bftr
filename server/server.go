@@ -137,12 +137,15 @@ func (ts *TradeServer) ListenAndMonitor() error {
 				switch td.PosSide {
 				case futures.SideTypeBuy:
 					if td.Wsk.C < td.Wsk.Cma {
-						ts.closePosition()
+						err = ts.closePosition()
 					}
 				case futures.SideTypeSell:
 					if td.Wsk.C > td.Wsk.Cma {
-						ts.closePosition()
+						err = ts.closePosition()
 					}
+				}
+				if err != nil {
+					ts.ErrChan <- err
 				}
 				continue
 			}
@@ -249,11 +252,13 @@ func (ts *TradeServer) findFrontHigh(klines []*indicator.Kline, posSide futures.
 
 func (ts *TradeServer) closePosition() error {
 	td := ts.s.Get()
-	ts.tradeSrv.ClosePosition(td.PosAmt)
+	err := ts.tradeSrv.ClosePosition(td.PosAmt)
+	if err != nil {
+		return err
+	}
 
 	// reset some datas
-	td.StopLoss = 0
-	td.PosQty = 0
-	td.PosSide = futures.SideTypeBuy
+	ts.s.Reset()
+
 	return nil
 }

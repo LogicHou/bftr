@@ -48,5 +48,6 @@ func (ms *MemStore) Reset() error {
 	ms.trader.StopLoss = 0
 	ms.trader.PosQty = 0
 	ms.trader.PosSide = futures.SideTypeBuy
+	
 	return nil
 }
