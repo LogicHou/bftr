@@ -12,7 +12,6 @@ import (
 func init() {
 	factory.Register("mem", &MemStore{
 		trader: &tstore.Trader{
-			Leverage:    1, // 当前杠杆倍数
 			HistKlines:  nil,
 			PosAmt:      0,                   // 持仓金额，值等于0的时候表示未持仓
 			PosQty:      0,                   // 持仓K次数

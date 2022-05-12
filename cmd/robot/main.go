@@ -18,14 +18,14 @@ func main() {
 	}
 	srv := server.NewTradeServer(s)
 	errChan := srv.ErrChan
-	err = srv.Serve()
+	err = srv.ListenAndServe()
 	if err != nil {
 		log.Println("trader server start failed:", err)
 		return
 	}
 	log.Println("trader server start ok")
 
-	srv.ListenAndTrans()
+	srv.ListenAndMonitor()
 	log.Println("trader handler start ok")
 
 	c := make(chan os.Signal, 1)

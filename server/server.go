@@ -29,12 +29,15 @@ func NewTradeServer(s store.Store) *TradeServer {
 		tradeSrv: bds.NewTradeSrv(),
 	}
 	//refresh some data
-	srv.updateHandler()
+	err := srv.updateHandler()
+	if err != nil {
+		srv.ErrChan <- err
+	}
 
 	return srv
 }
 
-func (ts *TradeServer) Serve() error {
+func (ts *TradeServer) ListenAndServe() error {
 	var err error
 	go func() {
 		err = ts.srv.Serve()
@@ -49,11 +52,11 @@ func (ts *TradeServer) Serve() error {
 	}
 }
 
-func (ts *TradeServer) ListenAndTrans() {
+func (ts *TradeServer) ListenAndMonitor() error {
 	var err error
 	td := ts.getHandler()
 	if err != nil {
-		ts.ErrChan <- err
+		return err
 	}
 	log.Println("Info: Data initialization succeeded!")
 
@@ -102,18 +105,14 @@ func (ts *TradeServer) ListenAndTrans() {
 				// 开仓点
 				if ts.openCondition(td.PosSide, curK[len(curK)-1], lastRsk) {
 					log.Println("beging creating order...")
-
-					if err != nil {
-						ts.ErrChan <- err
-					}
-
 					qty := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
+
 					switch td.PosSide {
 					case futures.SideTypeBuy:
-						td.StopLoss, err = findFrontHigh(td.HistKlines, futures.SideTypeBuy)
+						td.StopLoss, err = ts.findFrontHigh(td.HistKlines, futures.SideTypeBuy)
 						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss-1)
 					case futures.SideTypeSell:
-						td.StopLoss, err = findFrontHigh(td.HistKlines, futures.SideTypeSell)
+						td.StopLoss, err = ts.findFrontHigh(td.HistKlines, futures.SideTypeSell)
 						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss+1)
 					}
 					if err != nil {
@@ -132,21 +131,17 @@ func (ts *TradeServer) ListenAndTrans() {
 				switch td.PosSide {
 				case futures.SideTypeBuy:
 					if td.Wsk.C < td.Wsk.Cma {
-						ts.tradeSrv.ClosePosition(td.PosAmt)
-						ts.resetHandler()
-						// @todo 记录日志，重置一些数据
+						ts.closePosition()
 					}
 				case futures.SideTypeSell:
 					if td.Wsk.C > td.Wsk.Cma {
-						ts.tradeSrv.ClosePosition(td.PosAmt)
-						ts.resetHandler()
-						// @todo 记录日志，重置一些数据
+						ts.closePosition()
 					}
 				}
 				continue
 			}
 
-			// 止损逻辑，@todo 迁移到独立的goroutine中
+			// 止损逻辑
 			switch td.PosSide {
 			case futures.SideTypeBuy:
 				if td.Wsk.C < td.StopLoss {
@@ -165,6 +160,7 @@ func (ts *TradeServer) ListenAndTrans() {
 			td.PosQty += 1
 		}
 	}()
+	return nil
 }
 
 func (ts *TradeServer) getHandler() *store.Trader {
@@ -183,13 +179,13 @@ func (ts *TradeServer) updateHandler() error {
 
 	ts.s.Update(histKlines)
 
-	td := ts.getHandler()
+	td := ts.s.Get()
 	td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
 	if err != nil {
 		return err
 	}
 
-	log.Println(td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
+	log.Println("updated, dates:", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
 
 	return nil
 }
@@ -219,7 +215,7 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRs
 	return false
 }
 
-func findFrontHigh(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {
+func (ts *TradeServer) findFrontHigh(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {
 	if posSide == futures.SideTypeBuy {
 		ksLen := len(klines)
 		low := klines[ksLen-1].Low
@@ -245,4 +241,15 @@ func findFrontHigh(klines []*indicator.Kline, posSide futures.SideType) (float64
 	}
 
 	return 0.0, errors.New("not found stoploss condition")
+}
+
+func (ts *TradeServer) closePosition() error {
+	td := ts.s.Get()
+	ts.tradeSrv.ClosePosition(td.PosAmt)
+
+	// reset some datas
+	td.StopLoss = 0
+	td.PosQty = 0
+	td.PosSide = futures.SideTypeBuy
+	return nil
 }
