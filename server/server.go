@@ -14,15 +14,13 @@ import (
 
 type TradeServer struct {
 	s        store.Store
-	ErrChan  chan error
 	srv      *bds.Server
 	tradeSrv *bds.TradeSrv
 }
 
 func NewTradeServer(s store.Store) *TradeServer {
 	srv := &TradeServer{
-		s:       s,
-		ErrChan: make(chan error),
+		s: s,
 		srv: &bds.Server{
 			WskChan: make(chan *futures.WsKlineEvent),
 		},
@@ -32,27 +30,29 @@ func NewTradeServer(s store.Store) *TradeServer {
 	return srv
 }
 
-func (ts *TradeServer) ListenAndServe() error {
+func (ts *TradeServer) ListenAndServe() (<-chan error, error) {
 	var err error
+	errChan := make(chan error)
 	go func() {
 		err = ts.srv.Serve()
-		ts.ErrChan <- err
+		errChan <- err
 	}()
 
 	select {
-	case err = <-ts.ErrChan:
-		return err
+	case err = <-errChan:
+		return nil, err
 	case <-time.After(time.Second):
-		return nil
+		return errChan, nil
 	}
 }
 
-func (ts *TradeServer) ListenAndMonitor() error {
+func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 	var err error
+	errChan := make(chan error)
 	//refresh some data
 	err = ts.updateHandler()
 	if err != nil {
-		ts.ErrChan <- err
+		errChan <- err
 	}
 	td := ts.getHandler()
 	// fmt.Println(td.HistKlines[39])
@@ -72,7 +72,7 @@ func (ts *TradeServer) ListenAndMonitor() error {
 			td.Wsk.E = k.Time
 			td.Wsk.Cma, err = cmai.CurMa(td.HistKlines, td.Wsk.C)
 			if err != nil {
-				ts.ErrChan <- err
+				errChan <- err
 			}
 
 			// 刷新数据节点
@@ -89,7 +89,7 @@ func (ts *TradeServer) ListenAndMonitor() error {
 			if td.PosAmt == 0 {
 				oma, err := omai.CurMa(td.HistKlines, td.Wsk.C)
 				if err != nil {
-					ts.ErrChan <- err
+					errChan <- err
 				}
 				if td.Wsk.C > oma {
 					td.PosSide = futures.SideTypeBuy
@@ -122,11 +122,11 @@ func (ts *TradeServer) ListenAndMonitor() error {
 						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss+1)
 					}
 					if err != nil {
-						ts.ErrChan <- err
+						errChan <- err
 					}
 					td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
 					if err != nil {
-						ts.ErrChan <- err
+						errChan <- err
 					}
 				}
 				continue
@@ -145,7 +145,7 @@ func (ts *TradeServer) ListenAndMonitor() error {
 					}
 				}
 				if err != nil {
-					ts.ErrChan <- err
+					errChan <- err
 				}
 				continue
 			}
@@ -169,7 +169,12 @@ func (ts *TradeServer) ListenAndMonitor() error {
 			td.PosQty += 1
 		}
 	}()
-	return nil
+	select {
+	case err = <-errChan:
+		return nil, err
+	case <-time.After(time.Second):
+		return errChan, nil
+	}
 }
 
 func (ts *TradeServer) getHandler() *store.Trader {

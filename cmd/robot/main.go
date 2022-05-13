@@ -17,15 +17,14 @@ func main() {
 		panic(err)
 	}
 	srv := server.NewTradeServer(s)
-	errChan := srv.ErrChan
-	err = srv.ListenAndServe()
+	sErrChan, err := srv.ListenAndServe()
 	if err != nil {
 		log.Println("trader server start failed:", err)
 		return
 	}
 	log.Println("trader server start ok")
 
-	err = srv.ListenAndMonitor()
+	mErrChan, err := srv.ListenAndMonitor()
 	if err != nil {
 		log.Println("trader monitor start failed:", err)
 		return
@@ -36,8 +35,11 @@ func main() {
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 
 	select { // 监视来自errChan以及c的事件
-	case err = <-errChan:
+	case err = <-sErrChan:
 		log.Println("trader server have some errors:", err)
+		return
+	case err = <-mErrChan:
+		log.Println("trader monitor have some errors:", err)
 		return
 	case <-c:
 		log.Println("program is exiting...")
