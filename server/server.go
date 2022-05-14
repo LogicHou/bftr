@@ -84,7 +84,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					continue
 				}
 				lastRsk = td.HistKlines[len(td.HistKlines)-1]
-				log.Printf("PosAmt:%f, EntryPrice:%f, Leverage:%f, PosSide:%s\n", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
+				log.Printf("PosAmt:%f, EntryPrice:%f, Leverage:%f, PosSide:%s StopLoss:td.StopLoss:%f\n", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, td.StopLoss)
 			}
 
 			// 开仓逻辑
@@ -135,6 +135,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 			// 止盈逻辑
 			if td.PosQty > ts.tradeSrv.PosQtyUlimit {
+				log.Println("beging take profit")
 				switch td.PosSide {
 				case futures.SideTypeBuy:
 					if td.Wsk.C < td.Wsk.Cma {
@@ -152,6 +153,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			}
 
 			// 止损逻辑
+			log.Println("beging stop loss")
 			switch td.PosSide {
 			case futures.SideTypeBuy:
 				if td.Wsk.C < td.StopLoss {
@@ -257,6 +259,11 @@ func (ts *TradeServer) findFrontLow(klines []*indicator.Kline, posSide futures.S
 func (ts *TradeServer) closePosition() error {
 	td := ts.s.Get()
 	err := ts.tradeSrv.ClosePosition(td.PosAmt)
+	if err != nil {
+		return err
+	}
+
+	td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
 	if err != nil {
 		return err
 	}

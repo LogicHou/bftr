@@ -97,7 +97,7 @@ func (t *TradeSrv) ClosePosition(posAmt float64) error {
 		Quantity(utils.F64ToStr(qty)).
 		Do(context.Background())
 	if err != nil {
-		return errors.Errorf("closePosition1: %s", err)
+		return errors.Errorf("closePosition - 1: %s", err)
 	}
 
 	log.Println("ClosePosition:", order)
