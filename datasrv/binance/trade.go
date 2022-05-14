@@ -48,7 +48,7 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 	// 取消所有挂单
 	err := client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
-		return errors.Errorf("createMarketOrder - 1:", err)
+		return errors.Errorf("createMarketOrder - 1: %s", err)
 	}
 
 	sideStop := futures.SideTypeBuy
@@ -62,7 +62,7 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 		ClosePosition(true).StopPrice(utils.F64ToStr(utils.FRound2(maxStopLoss))).
 		Do(context.Background())
 	if err != nil {
-		return errors.Errorf("createMarketOrder - 2:", err)
+		return errors.Errorf("createMarketOrder - 2: %s", err)
 	}
 	log.Println("STOP_MARKET Order:", order)
 
@@ -72,7 +72,8 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 		Quantity(utils.F64ToStr(qty)).
 		Do(context.Background())
 	if err != nil {
-		return errors.Errorf("createMarketOrder - 3:", err)
+		err2 := client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
+		return errors.Errorf("createMarketOrder - 3: %s %s", err, err2)
 	}
 	log.Println("MARKET Order:", order)
 
@@ -96,14 +97,14 @@ func (t *TradeSrv) ClosePosition(posAmt float64) error {
 		Quantity(utils.F64ToStr(qty)).
 		Do(context.Background())
 	if err != nil {
-		return errors.Errorf("closePosition1", err)
+		return errors.Errorf("closePosition1: %s", err)
 	}
 
 	log.Println("ClosePosition:", order)
 
 	err = client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
 	if err != nil {
-		return errors.Errorf("closePosition2", err)
+		return errors.Errorf("closePosition2: %s", err)
 	}
 
 	return nil

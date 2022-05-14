@@ -32,10 +32,10 @@ func (srv *Server) Serve() error {
 				srv.WskChan <- event
 			},
 			func(err error) {
-				err = errors.Errorf(time.Now().Format("2006-01-02 15:04:05"), "errmsg:", err)
+				err = errors.Errorf(time.Now().Format("2006-01-02 15:04:05"), "errmsg: %s", err)
 			})
 		if err != nil {
-			return errors.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: ", err)
+			return errors.Errorf(time.Now().Format("2006-01-02 15:04:05"), "doneC err: %s", err)
 		}
 		<-doneC
 	}
