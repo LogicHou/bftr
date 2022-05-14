@@ -84,7 +84,12 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					continue
 				}
 				lastRsk = td.HistKlines[len(td.HistKlines)-1]
-				log.Printf("PosAmt:%f, EntryPrice:%f, Leverage:%f, PosSide:%s StopLoss:td.StopLoss:%f\n", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, td.StopLoss)
+
+				if td.PosAmt > 0 {
+					td.PosQty += 1
+				}
+
+				log.Printf("PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f  StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 			}
 
 			// 开仓逻辑
@@ -135,7 +140,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 			// 止盈逻辑
 			if td.PosQty > ts.tradeSrv.PosQtyUlimit {
-				log.Println("beging take profit")
 				switch td.PosSide {
 				case futures.SideTypeBuy:
 					if td.Wsk.C < td.Wsk.Cma {
@@ -153,7 +157,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			}
 
 			// 止损逻辑
-			log.Println("beging stop loss")
 			switch td.PosSide {
 			case futures.SideTypeBuy:
 				if td.Wsk.C < td.StopLoss {
@@ -169,7 +172,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				}
 			}
 
-			td.PosQty += 1
 		}
 	}()
 	select {
@@ -209,19 +211,20 @@ func (ts *TradeServer) resetHandler() error {
 }
 
 func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRsk *indicator.Kline) bool {
+	offset := 1.00
 	switch side {
 	case futures.SideTypeBuy:
-		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > ts.tradeSrv.OpenK1 {
+		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+offset) {
 			return true
 		}
-		if lastRsk.K < ts.tradeSrv.OpenK3 && curK > ts.tradeSrv.OpenK3 {
+		if lastRsk.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+offset) {
 			return true
 		}
 	case futures.SideTypeSell:
-		if lastRsk.K > ts.tradeSrv.OpenK2 && curK < ts.tradeSrv.OpenK2 {
+		if lastRsk.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2+offset) {
 			return true
 		}
-		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < ts.tradeSrv.OpenK3 {
+		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3+offset) {
 			return true
 		}
 	}
