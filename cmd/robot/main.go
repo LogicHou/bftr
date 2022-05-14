@@ -34,7 +34,7 @@ func main() {
 	c := make(chan os.Signal, 1)
 	signal.Notify(c, syscall.SIGINT, syscall.SIGTERM)
 
-	select { // 监视来自errChan以及c的事件
+	select {
 	case err = <-sErrChan:
 		log.Println("trader server have some errors:", err)
 		return

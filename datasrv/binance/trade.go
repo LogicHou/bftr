@@ -52,7 +52,7 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 	}
 
 	sideStop := futures.SideTypeBuy
-	if sideType == futures.SideTypeSell {
+	if sideType == futures.SideTypeBuy {
 		sideStop = futures.SideTypeSell
 	}
 

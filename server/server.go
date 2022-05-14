@@ -64,6 +64,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 		lastRsk := td.HistKlines[len(td.HistKlines)-1]
 		cmai := indicator.NewMa(ts.tradeSrv.CloseMa)
 		omai := indicator.NewMa(ts.tradeSrv.OpenSideMa)
+		kdj := indicator.NewKdj(9, 3, 3)
 
 		for k := range ts.srv.WskChan {
 			td.Wsk.C = utils.StrToF64(k.Kline.Close)
@@ -83,6 +84,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					continue
 				}
 				lastRsk = td.HistKlines[len(td.HistKlines)-1]
+				log.Printf("PosAmt:%f, EntryPrice:%f, Leverage:%f, PosSide:%s\n", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
 			}
 
 			// 开仓逻辑
@@ -99,7 +101,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					continue
 				}
 
-				kdj := indicator.NewKdj(9, 3, 3)
 				// @todo 这里不是很好的解决方案，后面再改进
 				tmpks := append(td.HistKlines, &indicator.Kline{
 					Close: td.Wsk.C,
@@ -115,10 +116,10 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 					switch td.PosSide {
 					case futures.SideTypeBuy:
-						td.StopLoss, err = ts.findFrontHigh(td.HistKlines, futures.SideTypeBuy)
+						td.StopLoss, err = ts.findFrontLow(td.HistKlines, futures.SideTypeBuy)
 						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss-1)
 					case futures.SideTypeSell:
-						td.StopLoss, err = ts.findFrontHigh(td.HistKlines, futures.SideTypeSell)
+						td.StopLoss, err = ts.findFrontLow(td.HistKlines, futures.SideTypeSell)
 						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss+1)
 					}
 					if err != nil {
@@ -187,10 +188,8 @@ func (ts *TradeServer) updateHandler() error {
 	if err != nil {
 		return err
 	}
-
 	klineSrv.WithKdj(histKlines)
 	klineSrv.WithMa(histKlines)
-
 	ts.s.Update(histKlines)
 
 	td := ts.s.Get()
@@ -227,7 +226,7 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRs
 	return false
 }
 
-func (ts *TradeServer) findFrontHigh(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {
+func (ts *TradeServer) findFrontLow(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {
 	if posSide == futures.SideTypeBuy {
 		ksLen := len(klines)
 		low := klines[ksLen-1].Low
