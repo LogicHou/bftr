@@ -61,6 +61,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 	go func() {
 		log.Println("listening transactions...")
+		tradeLock := false
 		lastRsk := td.HistKlines[len(td.HistKlines)-1]
 		cmai := indicator.NewMa(ts.tradeSrv.CloseMa)
 		omai := indicator.NewMa(ts.tradeSrv.OpenSideMa)
@@ -89,11 +90,13 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					td.PosQty += 1
 				}
 
+				tradeLock = false
+
 				log.Printf("PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f  StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 			}
 
 			// 开仓逻辑
-			if td.PosAmt == 0 {
+			if td.PosAmt == 0 && tradeLock == false {
 				oma, err := omai.CurMa(td.HistKlines, td.Wsk.C)
 				if err != nil {
 					errChan <- err
@@ -131,9 +134,12 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 						errChan <- err
 					}
 					td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
+					log.Printf("CreateMarketOrder - PosSide:%s PosAmt:%f  curK:%f EntryPrice:%f   StopLoss:%f\n", td.PosSide, td.PosAmt, curK[len(curK)-1], td.EntryPrice, td.StopLoss)
+
 					if err != nil {
 						errChan <- err
 					}
+					tradeLock = true
 				}
 				continue
 			}
@@ -214,7 +220,7 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRs
 	offset := 1.00
 	switch side {
 	case futures.SideTypeBuy:
-		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+offset) {
+		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1*offset) {
 			return true
 		}
 		if lastRsk.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+offset) {
