@@ -85,7 +85,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				}
 				lastRsk = td.HistKlines[len(td.HistKlines)-1]
 
-				if td.PosAmt > 0 {
+				if td.PosAmt != 0 {
 					td.PosQty += 1
 				}
 
