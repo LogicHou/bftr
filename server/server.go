@@ -118,7 +118,10 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				// 开仓点
 				if ts.openCondition(td.PosSide, curK[len(curK)-1], lastRsk) {
 					log.Println("beging creating order...")
-					qty := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
+					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
+					if err != nil {
+						errChan <- err
+					}
 
 					switch td.PosSide {
 					case futures.SideTypeBuy:

@@ -12,6 +12,7 @@ import (
 
 type TradeSrv struct {
 	Margin       float64
+	MarginRatio  float64
 	Interval     string
 	Leverage     float64
 	OpenSideMa   int
@@ -25,6 +26,7 @@ type TradeSrv struct {
 func NewTradeSrv() *TradeSrv {
 	return &TradeSrv{
 		Margin:       cfg.Margin,
+		MarginRatio:  cfg.MarginRatio,
 		Interval:     cfg.Interval,
 		Leverage:     cfg.Leverage,
 		OpenSideMa:   cfg.OpenSideMa,
@@ -36,12 +38,19 @@ func NewTradeSrv() *TradeSrv {
 	}
 }
 
-func (t *TradeSrv) CalcMqrginQty(curClose float64) float64 {
+func (t *TradeSrv) CalcMqrginQty(curClose float64) (float64, error) {
+	if t.MarginRatio > 0 {
+		res, err := client.NewGetAccountService().Do(context.Background())
+		if err != nil {
+			return 0, err
+		}
+		return utils.FRound((t.MarginRatio / 100.00 * utils.StrToF64(res.TotalWalletBalance)) * t.Leverage / curClose), nil
+	}
 	if t.Margin > 0 {
-		return utils.FRound(t.Margin * t.Leverage / curClose)
+		return utils.FRound(t.Margin * t.Leverage / curClose), nil
 	}
 
-	return 0
+	return 0, nil
 }
 
 func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, maxStopLoss float64) error {

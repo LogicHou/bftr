@@ -22,6 +22,7 @@ type Binance struct {
 	Interval     string  `json:"interval"`
 	Leverage     float64 `json:"leverage"`
 	Margin       float64 `json:"margin"`
+	MarginRatio  float64 `json:"marginRatio"`
 	HistRange    int     `json:"histRange"`
 	OpenSideMa   int     `json:"openSideMa"`
 	CloseMa      int     `json:"closeMa"`
