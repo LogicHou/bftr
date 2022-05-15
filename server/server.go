@@ -92,7 +92,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 				tradeLock = false
 
-				log.Printf("PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f  StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
+				log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 			}
 
 			// 开仓逻辑
@@ -125,16 +125,16 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					switch td.PosSide {
 					case futures.SideTypeBuy:
 						td.StopLoss, err = ts.findFrontLow(td.HistKlines, futures.SideTypeBuy)
-						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss-1)
+						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeBuy, qty, td.StopLoss)
 					case futures.SideTypeSell:
 						td.StopLoss, err = ts.findFrontLow(td.HistKlines, futures.SideTypeSell)
-						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss+1)
+						err = ts.tradeSrv.CreateMarketOrder(futures.SideTypeSell, qty, td.StopLoss)
 					}
 					if err != nil {
 						errChan <- err
 					}
 					td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
-					log.Printf("CreateMarketOrder - PosSide:%s PosAmt:%f  curK:%f EntryPrice:%f   StopLoss:%f\n", td.PosSide, td.PosAmt, curK[len(curK)-1], td.EntryPrice, td.StopLoss)
+					log.Printf("CreateMarketOrder - PosSide:%s PosAmt:%f  curK:%f EntryPrice:%f StopLoss:%f\n", td.PosSide, td.PosAmt, curK[len(curK)-1], td.EntryPrice, td.StopLoss)
 
 					if err != nil {
 						errChan <- err
@@ -220,17 +220,17 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRs
 	offset := 1.00
 	switch side {
 	case futures.SideTypeBuy:
-		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1*offset) {
+		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+offset) {
 			return true
 		}
 		if lastRsk.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+offset) {
 			return true
 		}
 	case futures.SideTypeSell:
-		if lastRsk.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2+offset) {
+		if lastRsk.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-offset) {
 			return true
 		}
-		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3+offset) {
+		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-offset) {
 			return true
 		}
 	}

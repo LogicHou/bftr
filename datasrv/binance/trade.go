@@ -50,16 +50,17 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 	if err != nil {
 		return errors.Errorf("createMarketOrder - 1: %s", err)
 	}
-
 	sideStop := futures.SideTypeBuy
+	offset := +5.0
 	if sideType == futures.SideTypeBuy {
 		sideStop = futures.SideTypeSell
+		offset = -5.0
 	}
 
 	// 预埋止损单 RestAPI
 	order, err := client.NewCreateOrderService().Symbol(cfg.Symbol).
 		Side(sideStop).Type("STOP_MARKET").
-		ClosePosition(true).StopPrice(utils.F64ToStr(utils.FRound2(maxStopLoss))).
+		ClosePosition(true).StopPrice(utils.F64ToStr(utils.FRound2(maxStopLoss + offset))).
 		Do(context.Background())
 	if err != nil {
 		return errors.Errorf("createMarketOrder - 2: %s", err)
