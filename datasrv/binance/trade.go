@@ -133,3 +133,13 @@ func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverag
 	}
 	return
 }
+
+func (t *TradeSrv) GetOpenOrder() (stopPrice float64, orderTime int64, err error) {
+	res, err := client.NewListOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
+	if err != nil {
+		return
+	}
+	stopPrice = utils.StrToF64(res[0].StopPrice)
+	orderTime = res[0].Time
+	return
+}

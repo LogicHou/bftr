@@ -164,13 +164,13 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			switch td.PosSide {
 			case futures.SideTypeBuy:
 				if td.Wsk.C < td.StopLoss {
-					ts.tradeSrv.ClosePosition(td.PosAmt)
+					ts.closePosition()
 					ts.resetHandler()
 					// @todo 记录日志，重置一些数据
 				}
 			case futures.SideTypeSell:
 				if td.Wsk.C > td.StopLoss {
-					ts.tradeSrv.ClosePosition(td.PosAmt)
+					ts.closePosition()
 					ts.resetHandler()
 					// @todo 记录日志，重置一些数据
 				}
@@ -206,13 +206,18 @@ func (ts *TradeServer) updateHandler() error {
 		return err
 	}
 	if td.PosAmt != 0 && td.StopLoss == 0 {
+		stopPrice, orderTime, err := ts.tradeSrv.GetOpenOrder()
+		td.PosQty = int((time.Now().UnixMilli() - orderTime) / (td.RefreshTime[ts.tradeSrv.Interval] / 2))
+		if err != nil {
+			return err
+		}
 		if td.PosAmt > 0 {
 			td.PosSide = futures.SideTypeBuy
-			td.StopLoss = td.EntryPrice - 10
+			td.StopLoss = stopPrice
 		}
 		if td.PosAmt < 0 {
 			td.PosSide = futures.SideTypeBuy
-			td.StopLoss = td.EntryPrice + 10
+			td.StopLoss = stopPrice
 		}
 	}
 	log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
