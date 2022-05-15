@@ -44,6 +44,9 @@ func (t *TradeSrv) CalcMqrginQty(curClose float64) (float64, error) {
 		if err != nil {
 			return 0, err
 		}
+		if utils.StrToF64(res.TotalWalletBalance) < cfg.MarginLimit {
+			return 0, errors.Errorf("TotalWalletBalance less than MarginLimit")
+		}
 		return utils.FRound((t.MarginRatio / 100.00 * utils.StrToF64(res.TotalWalletBalance)) * t.Leverage / curClose), nil
 	}
 	if t.Margin > 0 {

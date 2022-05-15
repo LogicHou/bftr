@@ -86,10 +86,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				}
 				lastRsk = td.HistKlines[len(td.HistKlines)-1]
 
-				if td.PosAmt != 0 {
-					td.PosQty += 1
-				}
-
 				tradeLock = false
 			}
 
@@ -223,6 +219,11 @@ func (ts *TradeServer) updateHandler() error {
 			td.StopLoss = stopPrice
 		}
 	}
+
+	if td.PosAmt != 0 {
+		td.PosQty += 1
+	}
+
 	log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 
 	return nil
