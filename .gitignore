@@ -19,4 +19,9 @@ go.sum
 
 config.json
 
+*.pem
+
+robot
+
+
 .idea/
