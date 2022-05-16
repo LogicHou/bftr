@@ -109,10 +109,11 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					High:  td.Wsk.H,
 					Low:   td.Wsk.L,
 				})
-				curK, _, _ := kdj.WithKdj(tmpks)
+				curKs, _, _ := kdj.WithKdj(tmpks)
+				curK := curKs[len(curKs)-1]
 
 				// 开仓点
-				if ts.openCondition(td.PosSide, curK[len(curK)-1], lastRsk) {
+				if ts.openCondition(td.PosSide, curK, lastRsk) {
 					log.Println("beging creating order...")
 					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
 					if err != nil {
@@ -131,7 +132,9 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 						errChan <- err
 					}
 					td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
-					log.Printf("CreateMarketOrder - PosSide:%s PosAmt:%f  curK:%f EntryPrice:%f StopLoss:%f\n", td.PosSide, td.PosAmt, curK[len(curK)-1], td.EntryPrice, td.StopLoss)
+
+					td.Openk = curK
+					log.Printf("CreateMarketOrder - PosSide:%s PosAmt:%f Openk:%f EntryPrice:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.Openk, td.EntryPrice, td.StopLoss)
 
 					if err != nil {
 						errChan <- err
@@ -160,18 +163,17 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			}
 
 			// 止损逻辑
+			if ts.closeCondition(lastRsk) {
+				ts.closePosition()
+			}
 			switch td.PosSide {
 			case futures.SideTypeBuy:
 				if td.Wsk.C < td.StopLoss {
 					ts.closePosition()
-					ts.resetHandler()
-					// @todo 记录日志，重置一些数据
 				}
 			case futures.SideTypeSell:
 				if td.Wsk.C > td.StopLoss {
 					ts.closePosition()
-					ts.resetHandler()
-					// @todo 记录日志，重置一些数据
 				}
 			}
 
@@ -249,6 +251,27 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRs
 			return true
 		}
 		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-offset) {
+			return true
+		}
+	}
+	return false
+}
+
+func (ts *TradeServer) closeCondition(lastRsk *indicator.Kline) bool {
+	td := ts.s.Get()
+	switch td.PosSide {
+	case futures.SideTypeBuy:
+		if td.Wsk.C < td.StopLoss {
+			return true
+		}
+		if td.PosQty == 1 && lastRsk.K < td.Openk {
+			return true
+		}
+	case futures.SideTypeSell:
+		if td.Wsk.C > td.StopLoss {
+			return true
+		}
+		if td.PosQty == 1 && lastRsk.K > td.Openk {
 			return true
 		}
 	}

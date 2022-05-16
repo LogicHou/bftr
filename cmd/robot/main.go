@@ -12,6 +12,13 @@ import (
 )
 
 func main() {
+	logFile, err := os.OpenFile(`./bftr.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if err != nil {
+		panic(err)
+	}
+	// 设置存储位置
+	log.SetOutput(logFile)
+
 	s, err := factory.New("mem")
 	if err != nil {
 		panic(err)

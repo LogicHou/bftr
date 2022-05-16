@@ -22,6 +22,7 @@ type Trader struct {
 	PosSide     futures.SideType
 	StopLoss    float64
 	RefreshTime map[string]int64
+	Openk       float64
 	Wsk
 }
 
