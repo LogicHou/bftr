@@ -61,7 +61,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 	go func() {
 		log.Println("listening transactions...")
-		tradeLock := false
+		// tradeLock := false
 		lastRsk := td.HistKlines[len(td.HistKlines)-1]
 		cmai := indicator.NewMa(ts.tradeSrv.CloseMa)
 		omai := indicator.NewMa(ts.tradeSrv.OpenSideMa)
@@ -86,11 +86,12 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				}
 				lastRsk = td.HistKlines[len(td.HistKlines)-1]
 
-				tradeLock = false
+				// tradeLock = false
 			}
 
 			// 开仓逻辑
-			if td.PosAmt == 0 && tradeLock == false {
+			// if td.PosAmt == 0 && tradeLock == false {
+			if td.PosAmt == 0 {
 				oma, err := omai.CurMa(td.HistKlines, td.Wsk.C)
 				if err != nil {
 					errChan <- err
@@ -139,7 +140,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					if err != nil {
 						errChan <- err
 					}
-					tradeLock = true
+					// tradeLock = true
 				}
 				continue
 			}
@@ -165,16 +166,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			// 止损逻辑
 			if ts.closeCondition(lastRsk) {
 				ts.closePosition()
-			}
-			switch td.PosSide {
-			case futures.SideTypeBuy:
-				if td.Wsk.C < td.StopLoss {
-					ts.closePosition()
-				}
-			case futures.SideTypeSell:
-				if td.Wsk.C > td.StopLoss {
-					ts.closePosition()
-				}
 			}
 
 		}
@@ -264,16 +255,16 @@ func (ts *TradeServer) closeCondition(lastRsk *indicator.Kline) bool {
 		if td.Wsk.C < td.StopLoss {
 			return true
 		}
-		if td.PosQty == 1 && lastRsk.K < td.Openk {
-			return true
-		}
+		// if td.PosQty == 2 && lastRsk.K < td.Openk {
+		// 	return true
+		// }
 	case futures.SideTypeSell:
 		if td.Wsk.C > td.StopLoss {
 			return true
 		}
-		if td.PosQty == 1 && lastRsk.K > td.Openk {
-			return true
-		}
+		// if td.PosQty == 2 && lastRsk.K > td.Openk {
+		// 	return true
+		// }
 	}
 	return false
 }

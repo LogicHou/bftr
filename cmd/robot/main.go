@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"log"
 	"os"
 	"os/signal"
@@ -12,12 +13,17 @@ import (
 )
 
 func main() {
-	logFile, err := os.OpenFile(`./bftr.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
-	if err != nil {
-		panic(err)
+	var logToFile int
+	flag.IntVar(&logToFile, "lf", 0, "log to file")
+	flag.Parse()
+
+	if logToFile == 1 {
+		logFile, err := os.OpenFile(`./bftr.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			panic(err)
+		}
+		log.SetOutput(logFile)
 	}
-	// 设置存储位置
-	log.SetOutput(logFile)
 
 	s, err := factory.New("mem")
 	if err != nil {
