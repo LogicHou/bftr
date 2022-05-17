@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/LogicHou/bftr/internal/store"
 	"github.com/LogicHou/bftr/server"
@@ -53,6 +54,8 @@ func main() {
 		return
 	case err = <-mErrChan:
 		log.Println("trader monitor have some errors:", err)
+		srv.SafetyQuit()
+		time.Sleep(6 * time.Second)
 		return
 	case <-c:
 		log.Println("program is exiting...")

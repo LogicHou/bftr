@@ -178,6 +178,13 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 	}
 }
 
+func (ts *TradeServer) SafetyQuit() {
+	td := ts.s.Get()
+	if td.PosAmt != 0 {
+		ts.closePosition()
+	}
+}
+
 func (ts *TradeServer) getHandler() *store.Trader {
 	return ts.s.Get()
 }
