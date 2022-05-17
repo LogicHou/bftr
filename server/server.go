@@ -79,13 +79,19 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 			// 刷新数据节点
 			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[ts.tradeSrv.Interval] {
-				ts.updateHandler()
+				err = ts.updateHandler()
+				if err != nil {
+					errChan <- err
+				}
 				if td.HistKlines[len(td.HistKlines)-1].OpenTime == lastRsk.OpenTime {
 					time.Sleep(6 * time.Second) // @todo 改成goroutine形式
 					continue
 				}
-				lastRsk = td.HistKlines[len(td.HistKlines)-1]
 
+				lastRsk = td.HistKlines[len(td.HistKlines)-1]
+				if td.PosAmt != 0 {
+					td.PosQty += 1
+				}
 				// tradeLock = false
 			}
 
@@ -215,10 +221,6 @@ func (ts *TradeServer) updateHandler() error {
 			td.PosSide = futures.SideTypeBuy
 			td.StopLoss = stopPrice
 		}
-	}
-
-	if td.PosAmt != 0 {
-		td.PosQty += 1
 	}
 
 	log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
