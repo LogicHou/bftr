@@ -49,17 +49,17 @@ func (ts *TradeServer) ListenAndServe() (<-chan error, error) {
 func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 	var err error
 	errChan := make(chan error)
-	//refresh some data
-	err = ts.updateHandler()
-	if err != nil {
-		errChan <- err
-	}
-	td := ts.getHandler()
-	// fmt.Println(td.HistKlines[39])
-
-	log.Println("Info: Data initialization succeeded!")
 
 	go func() {
+		//refresh some data
+		err = ts.updateHandler()
+		if err != nil {
+			errChan <- err
+		}
+		td := ts.getHandler()
+
+		log.Println("Info: Data initialization succeeded!")
+
 		log.Println("listening transactions...")
 		// tradeLock := false
 		lastRsk := td.HistKlines[len(td.HistKlines)-1]
@@ -170,15 +170,12 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 		}
 	}()
-	select {
-	case err = <-errChan:
-		return nil, err
-	case <-time.After(time.Second):
-		return errChan, nil
-	}
+
+	return errChan, nil
 }
 
 func (ts *TradeServer) SafetyQuit() {
+	log.Println("trigger SafetyQuit")
 	td := ts.s.Get()
 	if td.PosAmt != 0 {
 		ts.closePosition()
