@@ -58,7 +58,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 		}
 		td := ts.getHandler()
 
-		log.Println("Info: Data initialization succeeded!")
+		log.Printf("Data initialization succeeded: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 
 		log.Println("listening transactions...")
 		// tradeLock := false
@@ -92,6 +92,8 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				if td.PosAmt != 0 {
 					td.PosQty += 1
 				}
+				log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
+
 				// tradeLock = false
 			}
 
@@ -209,7 +211,7 @@ func (ts *TradeServer) updateHandler() error {
 	}
 	if td.PosAmt != 0 && td.StopLoss == 0 {
 		stopPrice, orderTime, err := ts.tradeSrv.GetOpenOrder()
-		td.PosQty = int((time.Now().UnixMilli() - orderTime) / (td.RefreshTime[ts.tradeSrv.Interval] / 2))
+		td.PosQty = int((time.Now().UnixMilli()-orderTime)/(td.RefreshTime[ts.tradeSrv.Interval]/2)) + 1
 		if err != nil {
 			return err
 		}
@@ -222,8 +224,6 @@ func (ts *TradeServer) updateHandler() error {
 			td.StopLoss = stopPrice
 		}
 	}
-
-	log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 
 	return nil
 }
