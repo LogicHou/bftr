@@ -148,7 +148,8 @@ func (t *TradeSrv) GetPostionRisk() (posAmt float64, entryPrice float64, leverag
 
 func (t *TradeSrv) GetOpenOrder() (stopPrice float64, orderTime int64, err error) {
 	res, err := client.NewListOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
-	if err != nil {
+	if err != nil || len(res) == 0 {
+		err = errors.Errorf("ListOpenOrders was zero")
 		return
 	}
 	stopPrice = utils.StrToF64(res[0].StopPrice)
