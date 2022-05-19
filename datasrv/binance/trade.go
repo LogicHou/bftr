@@ -85,8 +85,7 @@ func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, max
 		Quantity(utils.F64ToStr(qty)).
 		Do(context.Background())
 	if err != nil {
-		err2 := client.NewCancelAllOpenOrdersService().Symbol(cfg.Symbol).Do(context.Background())
-		return errors.Errorf("createMarketOrder - 3: %s %s", err, err2)
+		return errors.Errorf("createMarketOrder - 3: %s", err)
 	}
 	log.Println("MARKET Order:", order)
 
