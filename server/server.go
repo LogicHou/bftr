@@ -122,7 +122,8 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				curK := curKs[len(curKs)-1]
 
 				// 开仓点
-				if ts.openCondition(td.PosSide, curK, lastRsk) {
+				// if ts.openCondition(td.PosSide, curK, lastRsk) {
+				if ts.openConditionTest1(td.PosSide, td.HistKlines) {
 					log.Println("beging creating order...")
 					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
 					if err != nil {
@@ -248,6 +249,29 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRs
 			return true
 		}
 		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-offset) {
+			return true
+		}
+	}
+	return false
+}
+
+func (ts *TradeServer) openConditionTest1(side futures.SideType, kls []*indicator.Kline) bool {
+	lastkl1 := kls[len(kls)-1]
+	lastkl2 := kls[len(kls)-2]
+
+	switch side {
+	case futures.SideTypeBuy:
+		if lastkl2.K < ts.tradeSrv.OpenK1 && lastkl1.K > ts.tradeSrv.OpenK1 {
+			return true
+		}
+		if lastkl2.K < ts.tradeSrv.OpenK3 && lastkl1.K > ts.tradeSrv.OpenK3 {
+			return true
+		}
+	case futures.SideTypeSell:
+		if lastkl2.K > ts.tradeSrv.OpenK2 && lastkl1.K < ts.tradeSrv.OpenK2 {
+			return true
+		}
+		if lastkl2.K > ts.tradeSrv.OpenK3 && lastkl1.K < ts.tradeSrv.OpenK3 {
 			return true
 		}
 	}
