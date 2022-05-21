@@ -221,7 +221,7 @@ func (ts *TradeServer) updateHandler() error {
 			td.StopLoss = stopPrice
 		}
 		if td.PosAmt < 0 {
-			td.PosSide = futures.SideTypeBuy
+			td.PosSide = futures.SideTypeSell
 			td.StopLoss = stopPrice
 		}
 	}
