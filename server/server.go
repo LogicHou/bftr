@@ -264,16 +264,16 @@ func (ts *TradeServer) openConditionTest1(side futures.SideType, kls []*indicato
 		if lastkl2.K < ts.tradeSrv.OpenK1 && lastkl1.K > ts.tradeSrv.OpenK1 {
 			return true
 		}
-		if lastkl2.K < ts.tradeSrv.OpenK3 && lastkl1.K > ts.tradeSrv.OpenK3 {
-			return true
-		}
+		// if lastkl2.K < ts.tradeSrv.OpenK3 && lastkl1.K > ts.tradeSrv.OpenK3 {
+		// 	return true
+		// }
 	case futures.SideTypeSell:
 		if lastkl2.K > ts.tradeSrv.OpenK2 && lastkl1.K < ts.tradeSrv.OpenK2 {
 			return true
 		}
-		if lastkl2.K > ts.tradeSrv.OpenK3 && lastkl1.K < ts.tradeSrv.OpenK3 {
-			return true
-		}
+		// if lastkl2.K > ts.tradeSrv.OpenK3 && lastkl1.K < ts.tradeSrv.OpenK3 {
+		// 	return true
+		// }
 	}
 	return false
 }
