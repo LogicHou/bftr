@@ -122,8 +122,8 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				curK := curKs[len(curKs)-1]
 
 				// 开仓点
-				// if ts.openCondition(td.PosSide, curK, lastRsk) {
-				if ts.openConditionTest1(td.PosSide, td.HistKlines) {
+				if ts.openCondition(td.PosSide, curK, td.HistKlines) {
+					// if ts.openConditionTest1(td.PosSide, td.HistKlines) {
 					log.Println("beging creating order...")
 					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
 					if err != nil {
@@ -234,22 +234,47 @@ func (ts *TradeServer) resetHandler() error {
 	return nil
 }
 
-func (ts *TradeServer) openCondition(side futures.SideType, curK float64, lastRsk *indicator.Kline) bool {
-	offset := 1.00
+func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []*indicator.Kline) bool {
+	offset := 3.00
+	lastkl1 := kls[len(kls)-1]
+	goldCross, deadCross := false, false
+
 	switch side {
 	case futures.SideTypeBuy:
-		if lastRsk.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+offset) {
+		if lastkl1.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+offset) {
 			return true
 		}
-		if lastRsk.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+offset) {
-			return true
+		if lastkl1.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+offset) {
+			for i := len(kls) - 1; i > 0; i-- {
+				if kls[i].K > ts.tradeSrv.OpenK3 && kls[i-1].K < ts.tradeSrv.OpenK3 {
+					break
+				}
+				if kls[i].K > ts.tradeSrv.OpenK3 && (kls[i].K > kls[i].D && kls[i-1].K < kls[i-1].D) {
+					goldCross = true
+				}
+				if kls[i].K > ts.tradeSrv.OpenK3 && (kls[i].K < kls[i].D && kls[i-1].K > kls[i-1].D) {
+					deadCross = true
+				}
+			}
+			return !(goldCross && deadCross)
 		}
 	case futures.SideTypeSell:
-		if lastRsk.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-offset) {
+		if lastkl1.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-offset) {
 			return true
 		}
-		if lastRsk.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-offset) {
-			return true
+		if lastkl1.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-offset) {
+			for i := len(kls) - 1; i > 0; i-- {
+				if kls[i].K < ts.tradeSrv.OpenK3 && kls[i-1].K > ts.tradeSrv.OpenK3 {
+					break
+				}
+				if kls[i].K < ts.tradeSrv.OpenK3 && (kls[i].K < kls[i].D && kls[i-1].K > kls[i-1].D) {
+					goldCross = true
+				}
+				if kls[i].K < ts.tradeSrv.OpenK3 && (kls[i].K > kls[i].D && kls[i-1].K < kls[i-1].D) {
+					deadCross = true
+				}
+			}
+			return !(goldCross && deadCross)
 		}
 	}
 	return false
