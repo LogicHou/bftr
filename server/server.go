@@ -324,26 +324,23 @@ func (ts *TradeServer) closeCondition(lastRsk *indicator.Kline) bool {
 	return false
 }
 
-func (ts *TradeServer) findFrontLow(klines []*indicator.Kline, posSide futures.SideType) (float64, error) {
+func (ts *TradeServer) findFrontLow(kls []*indicator.Kline, posSide futures.SideType) (float64, error) {
+	td := ts.s.Get()
 	if posSide == futures.SideTypeBuy {
-		ksLen := len(klines)
-		low := klines[ksLen-1].Low
-		for i := range klines {
-			if klines[ksLen-i-1].Low < low &&
-				klines[ksLen-i-2].Low > klines[ksLen-i-1].Low {
-				return klines[ksLen-i-1].Low, nil
+		low := td.Wsk.L
+		for i := len(kls) - 1; i > 0; i-- {
+			if kls[i].Low < low && kls[i].Low < kls[i-1].Low {
+				return kls[i].Low, nil
 			}
 		}
 		return 0.0, errors.New("not found stoploss condition")
 	}
 
 	if posSide == futures.SideTypeSell {
-		ksLen := len(klines)
-		high := klines[ksLen-1].High
-		for i := range klines {
-			if klines[ksLen-i-1].High > high &&
-				klines[ksLen-i-2].High < klines[ksLen-i-1].High {
-				return klines[ksLen-i-1].High, nil
+		high := td.Wsk.H
+		for i := len(kls) - 1; i > 0; i-- {
+			if kls[i].High > high && kls[i].High > kls[i-1].High {
+				return kls[i].High, nil
 			}
 		}
 		return 0.0, errors.New("not found stoploss condition")
