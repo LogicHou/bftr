@@ -78,7 +78,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			}
 
 			// 刷新数据节点
-			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[ts.tradeSrv.Interval] {
+			if (td.Wsk.E - lastRsk.CloseTime) > 3000 {
 				err = ts.updateHandler()
 				if err != nil {
 					errChan <- err
