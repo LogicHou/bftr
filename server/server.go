@@ -78,13 +78,14 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 			}
 
 			// 刷新数据节点
-			if (td.Wsk.E - lastRsk.OpenTime) > td.RefreshTime[ts.tradeSrv.Interval] {
+			if (td.Wsk.E - lastRsk.CloseTime) > td.RefreshTime[ts.tradeSrv.Interval] {
 				err = ts.updateHandler()
 				if err != nil {
 					errChan <- err
 				}
 				if td.HistKlines[len(td.HistKlines)-1].OpenTime == lastRsk.OpenTime {
-					time.Sleep(6 * time.Second) // @todo 改成goroutine形式
+					log.Printf("updateHandler delay")
+					time.Sleep(6 * time.Second) // TODO 改成goroutine形式
 					continue
 				}
 
@@ -112,7 +113,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					continue
 				}
 
-				// @todo 这里不是很好的解决方案，后面再改进
+				// TODO 这里不是很好的解决方案，后面再改进
 				tmpks := append(td.HistKlines, &indicator.Kline{
 					Close: td.Wsk.C,
 					High:  td.Wsk.H,

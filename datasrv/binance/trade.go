@@ -42,10 +42,10 @@ func (t *TradeSrv) CalcMqrginQty(curClose float64) (float64, error) {
 	if t.MarginRatio > 0 {
 		res, err := client.NewGetAccountService().Do(context.Background())
 		if err != nil {
-			return 0, err
+			return 0.0, err
 		}
 		if utils.StrToF64(res.TotalWalletBalance) < cfg.MarginLimit {
-			return 0, errors.Errorf("TotalWalletBalance less than MarginLimit")
+			return 0.0, errors.Errorf("TotalWalletBalance less than MarginLimit")
 		}
 		return utils.FRound((t.MarginRatio / 100.00 * utils.StrToF64(res.TotalWalletBalance)) * t.Leverage / curClose), nil
 	}
@@ -53,7 +53,7 @@ func (t *TradeSrv) CalcMqrginQty(curClose float64) (float64, error) {
 		return utils.FRound(t.Margin * t.Leverage / curClose), nil
 	}
 
-	return 0, nil
+	return 0.0, nil
 }
 
 func (t *TradeSrv) CreateMarketOrder(sideType futures.SideType, qty float64, maxStopLoss float64) error {
