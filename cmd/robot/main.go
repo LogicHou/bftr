@@ -14,12 +14,12 @@ import (
 )
 
 func main() {
-	var logToFile int
-	flag.IntVar(&logToFile, "lf", 0, "log to file")
+	var logToFile string
+	flag.StringVar(&logToFile, "lg", "", "log to file")
 	flag.Parse()
 
-	if logToFile == 1 {
-		logFile, err := os.OpenFile(`./bftr.log`, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+	if logToFile != "" {
+		logFile, err := os.OpenFile(logToFile, os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
 			panic(err)
 		}
