@@ -238,6 +238,7 @@ func (ts *TradeServer) resetHandler() error {
 func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []*indicator.Kline) bool {
 	offset := 3.00
 	lastkl1 := kls[len(kls)-1]
+	lastkl2 := kls[len(kls)-2]
 	goldCross, deadCross := false, false
 
 	switch side {
@@ -259,6 +260,9 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 			}
 			return !(goldCross && deadCross)
 		}
+		if lastkl2.K < ts.tradeSrv.OpenK1 && lastkl1.K > ts.tradeSrv.OpenK1 {
+			return true
+		}
 	case futures.SideTypeSell:
 		if lastkl1.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-offset) {
 			return true
@@ -276,6 +280,9 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 				}
 			}
 			return !(goldCross && deadCross)
+		}
+		if lastkl2.K > ts.tradeSrv.OpenK2 && lastkl1.K < ts.tradeSrv.OpenK2 {
+			return true
 		}
 	}
 	return false
