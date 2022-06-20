@@ -144,6 +144,11 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					}
 					td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide, err = ts.tradeSrv.GetPostionRisk()
 
+					if td.PosAmt == 0 {
+						log.Panicln("GetPostionRisk may be failed, the data:", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
+						td.PosAmt = qty
+					}
+
 					td.Openk = curK
 					log.Printf("CreateMarketOrder - PosSide:%s PosAmt:%f Openk:%f EntryPrice:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.Openk, td.EntryPrice, td.StopLoss)
 
