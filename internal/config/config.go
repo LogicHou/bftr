@@ -31,6 +31,8 @@ type Binance struct {
 	OpenK1       float64 `json:"openK1"`
 	OpenK2       float64 `json:"openK2"`
 	OpenK3       float64 `json:"openK3"`
+	KOffset      float64 `json:"kOffset"`
+	CrossOffset  float64 `json:"crossOffset"`
 }
 
 func Get() *Cfg {

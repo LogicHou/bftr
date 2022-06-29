@@ -124,7 +124,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 
 				// 开仓点
 				if ts.openCondition(td.PosSide, curK, td.HistKlines) {
-					// if ts.openConditionTest1(td.PosSide, td.HistKlines) {
 					log.Println("beging creating order...")
 					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
 					if err != nil {
@@ -241,22 +240,23 @@ func (ts *TradeServer) resetHandler() error {
 }
 
 func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []*indicator.Kline) bool {
-	offset := 3.00
-	lastkl1 := kls[len(kls)-1]
-	lastkl2 := kls[len(kls)-2]
+	kOffset := ts.tradeSrv.KOffset
+	crossOffset := ts.tradeSrv.CrossOffset
+	preKl1 := kls[len(kls)-1]
+	preKl2 := kls[len(kls)-2]
 	goldCross, deadCross := false, false
 
 	switch side {
 	case futures.SideTypeBuy:
-		if lastkl1.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+offset) {
+		if preKl1.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+kOffset) {
 			return true
 		}
-		if lastkl1.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+offset) {
+		if preKl1.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+kOffset) {
 			for i := len(kls) - 1; i > 0; i-- {
 				if kls[i].K > ts.tradeSrv.OpenK3 && kls[i-1].K < ts.tradeSrv.OpenK3 {
 					break
 				}
-				if kls[i].K > ts.tradeSrv.OpenK3 && (kls[i].K > kls[i].D && kls[i-1].K < kls[i-1].D) {
+				if kls[i].K > ts.tradeSrv.OpenK3 && (kls[i].K-crossOffset > kls[i].D && kls[i-1].K < kls[i-1].D) {
 					goldCross = true
 				}
 				if kls[i].K > ts.tradeSrv.OpenK3 && (kls[i].K < kls[i].D && kls[i-1].K > kls[i-1].D) {
@@ -265,19 +265,19 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 			}
 			return !(goldCross && deadCross)
 		}
-		if lastkl2.K < ts.tradeSrv.OpenK1 && lastkl1.K > ts.tradeSrv.OpenK1 {
+		if preKl2.K < ts.tradeSrv.OpenK1 && preKl1.K > ts.tradeSrv.OpenK1 {
 			return true
 		}
 	case futures.SideTypeSell:
-		if lastkl1.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-offset) {
+		if preKl1.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-kOffset) {
 			return true
 		}
-		if lastkl1.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-offset) {
+		if preKl1.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-kOffset) {
 			for i := len(kls) - 1; i > 0; i-- {
 				if kls[i].K < ts.tradeSrv.OpenK3 && kls[i-1].K > ts.tradeSrv.OpenK3 {
 					break
 				}
-				if kls[i].K < ts.tradeSrv.OpenK3 && (kls[i].K < kls[i].D && kls[i-1].K > kls[i-1].D) {
+				if kls[i].K < ts.tradeSrv.OpenK3 && (kls[i].K+crossOffset < kls[i].D && kls[i-1].K > kls[i-1].D) {
 					goldCross = true
 				}
 				if kls[i].K < ts.tradeSrv.OpenK3 && (kls[i].K > kls[i].D && kls[i-1].K < kls[i-1].D) {
@@ -286,32 +286,9 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 			}
 			return !(goldCross && deadCross)
 		}
-		if lastkl2.K > ts.tradeSrv.OpenK2 && lastkl1.K < ts.tradeSrv.OpenK2 {
+		if preKl2.K > ts.tradeSrv.OpenK2 && preKl1.K < ts.tradeSrv.OpenK2 {
 			return true
 		}
-	}
-	return false
-}
-
-func (ts *TradeServer) openConditionTest1(side futures.SideType, kls []*indicator.Kline) bool {
-	lastkl1 := kls[len(kls)-1]
-	lastkl2 := kls[len(kls)-2]
-
-	switch side {
-	case futures.SideTypeBuy:
-		if lastkl2.K < ts.tradeSrv.OpenK1 && lastkl1.K > ts.tradeSrv.OpenK1 {
-			return true
-		}
-		// if lastkl2.K < ts.tradeSrv.OpenK3 && lastkl1.K > ts.tradeSrv.OpenK3 {
-		// 	return true
-		// }
-	case futures.SideTypeSell:
-		if lastkl2.K > ts.tradeSrv.OpenK2 && lastkl1.K < ts.tradeSrv.OpenK2 {
-			return true
-		}
-		// if lastkl2.K > ts.tradeSrv.OpenK3 && lastkl1.K < ts.tradeSrv.OpenK3 {
-		// 	return true
-		// }
 	}
 	return false
 }

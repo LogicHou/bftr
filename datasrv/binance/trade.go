@@ -21,6 +21,8 @@ type TradeSrv struct {
 	OpenK1       float64
 	OpenK2       float64
 	OpenK3       float64
+	KOffset      float64
+	CrossOffset  float64
 }
 
 func NewTradeSrv() *TradeSrv {
@@ -35,6 +37,8 @@ func NewTradeSrv() *TradeSrv {
 		OpenK1:       cfg.OpenK1,
 		OpenK2:       cfg.OpenK2,
 		OpenK3:       cfg.OpenK3,
+		KOffset:      cfg.KOffset,
+		CrossOffset:  cfg.CrossOffset,
 	}
 }
 
