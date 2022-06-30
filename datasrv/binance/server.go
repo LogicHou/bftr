@@ -26,6 +26,10 @@ type Server struct {
 }
 
 func (srv *Server) Serve() error {
+	resL, err := client.NewChangeLeverageService().Symbol(cfg.Symbol).Leverage(int(cfg.Leverage)).Do(context.Background())
+	if err != nil || float64(resL.Leverage) != cfg.Leverage {
+		return errors.Errorf("change leverage failed: %s", err)
+	}
 	for {
 		doneC, _, err := futures.WsKlineServe(cfg.Binance.Symbol, cfg.Binance.Interval,
 			func(event *futures.WsKlineEvent) {

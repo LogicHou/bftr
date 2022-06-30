@@ -125,7 +125,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				// 开仓点
 				if ts.openCondition(td.PosSide, curK, td.HistKlines) {
 					log.Println("beging creating order...")
-					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C)
+					qty, err := ts.tradeSrv.CalcMqrginQty(td.Wsk.C, td.Leverage)
 					if err != nil {
 						errChan <- err
 					}

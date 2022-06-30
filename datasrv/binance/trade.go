@@ -2,6 +2,7 @@ package binance
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"math"
 
@@ -42,19 +43,20 @@ func NewTradeSrv() *TradeSrv {
 	}
 }
 
-func (t *TradeSrv) CalcMqrginQty(curClose float64) (float64, error) {
+func (t *TradeSrv) CalcMqrginQty(curClose float64, leverage float64) (float64, error) {
 	if t.MarginRatio > 0 {
 		res, err := client.NewGetAccountService().Do(context.Background())
 		if err != nil {
 			return 0.0, err
 		}
+		fmt.Println(res.TotalWalletBalance)
 		if utils.StrToF64(res.TotalWalletBalance) < cfg.MarginLimit {
 			return 0.0, errors.Errorf("TotalWalletBalance less than MarginLimit")
 		}
-		return utils.FRound((t.MarginRatio / 100.00 * utils.StrToF64(res.TotalWalletBalance)) * t.Leverage / curClose), nil
+		return utils.FRound((t.MarginRatio / 100.00 * utils.StrToF64(res.TotalWalletBalance)) * leverage / curClose), nil
 	}
 	if t.Margin > 0 {
-		return utils.FRound(t.Margin * t.Leverage / curClose), nil
+		return utils.FRound(t.Margin * leverage / curClose), nil
 	}
 
 	return 0.0, nil
