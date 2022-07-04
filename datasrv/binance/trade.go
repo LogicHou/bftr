@@ -2,7 +2,6 @@ package binance
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"math"
 
@@ -49,7 +48,6 @@ func (t *TradeSrv) CalcMqrginQty(curClose float64, leverage float64) (float64, e
 		if err != nil {
 			return 0.0, err
 		}
-		fmt.Println(res.TotalWalletBalance)
 		if utils.StrToF64(res.TotalWalletBalance) < cfg.MarginLimit {
 			return 0.0, errors.Errorf("TotalWalletBalance less than MarginLimit")
 		}
