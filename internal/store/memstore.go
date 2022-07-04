@@ -19,7 +19,7 @@ func init() {
 			Openk:       0,
 			PosSide:     futures.SideTypeBuy, // 持仓的买卖方向，默认为买
 			StopLoss:    0,                   // 止损数值
-			RefreshTime: map[string]int64{"30m": 1804000, "15m": 904000, "5m": 304000, "1m": 64000},
+			RefreshTime: map[string]int64{"4h": 14404000, "1h": 3604000, "30m": 1804000, "15m": 904000, "5m": 304000, "1m": 64000},
 		}})
 }
 
