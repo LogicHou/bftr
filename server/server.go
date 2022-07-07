@@ -217,7 +217,7 @@ func (ts *TradeServer) updateHandler() error {
 	}
 	if td.PosAmt != 0 && td.StopLoss == 0 {
 		stopPrice, orderTime, err := ts.tradeSrv.GetOpenOrder()
-		td.PosQty = int((time.Now().UnixMilli()-orderTime)/(td.RefreshTime[ts.tradeSrv.Interval]/2)) + 1
+		td.PosQty = int((time.Now().UnixMilli()-orderTime)/(td.RefreshTime[ts.tradeSrv.Interval]-4000)) + 1
 		if err != nil {
 			return err
 		}
