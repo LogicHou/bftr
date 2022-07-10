@@ -29,9 +29,11 @@ type Trader struct {
 type Wsk struct {
 	H   float64
 	L   float64
+	O   float64
 	C   float64
 	V   float64
 	E   int64
+	ST  int64
 	Cma float64
 }
 

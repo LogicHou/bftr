@@ -21,7 +21,6 @@ config.json
 
 *.pem
 
-robot
-
-
 .idea/
+
+kline.js

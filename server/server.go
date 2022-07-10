@@ -1,12 +1,19 @@
 package server
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
+	"strconv"
 	"time"
 
 	bds "github.com/LogicHou/bftr/datasrv/binance"
 	"github.com/LogicHou/bftr/indicator"
+	"github.com/LogicHou/bftr/internal/webhdl"
 	"github.com/LogicHou/bftr/store"
 	"github.com/LogicHou/bftr/utils"
 	"github.com/adshao/go-binance/v2/futures"
@@ -49,6 +56,7 @@ func (ts *TradeServer) ListenAndServe() (<-chan error, error) {
 func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 	var err error
 	errChan := make(chan error)
+	td := ts.getHandler()
 
 	go func() {
 		//refresh some data
@@ -56,7 +64,6 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 		if err != nil {
 			errChan <- err
 		}
-		td := ts.getHandler()
 
 		log.Printf("Data initialization succeeded: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 
@@ -68,9 +75,12 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 		kdj := indicator.NewKdj(9, 3, 3)
 
 		for k := range ts.srv.WskChan {
+			td.Wsk.O = utils.StrToF64(k.Kline.Open)
 			td.Wsk.C = utils.StrToF64(k.Kline.Close)
 			td.Wsk.H = utils.StrToF64(k.Kline.High)
 			td.Wsk.L = utils.StrToF64(k.Kline.Low)
+			td.Wsk.V = utils.StrToF64(k.Kline.Volume)
+			td.Wsk.ST = k.Kline.StartTime
 			td.Wsk.E = k.Time
 			td.Wsk.Cma, err = cmai.CurMa(td.HistKlines, td.Wsk.C)
 			if err != nil {
@@ -185,6 +195,13 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 		}
 	}()
 
+	go func() {
+		fs := http.FileServer(http.Dir("./web"))
+		http.Handle("/kline/", http.StripPrefix("/kline/", fs))
+		http.HandleFunc("/updatekline", webhdl.KlineUpdateHdl(td))
+		log.Fatal(http.ListenAndServe(":18086", nil))
+	}()
+
 	return errChan, nil
 }
 
@@ -231,7 +248,71 @@ func (ts *TradeServer) updateHandler() error {
 		}
 	}
 
+	go func() {
+		ts.creatChartJson(histKlines)
+	}()
+
 	return nil
+}
+
+func (ts *TradeServer) creatChartJson(klines []*indicator.Kline) {
+	karr := [][]string{}
+	for _, v := range klines {
+		tm := utils.MsToTime(v.OpenTime + 1)
+		karr = append(karr, []string{
+			tm.Format("2006-01-02T15:04:05.000"),
+			utils.F64ToStr(v.Open),
+			utils.F64ToStr(v.High),
+			utils.F64ToStr(v.Low),
+			utils.F64ToStr(v.Close),
+			utils.F64ToStr(v.Volume),
+		})
+	}
+	content, _ := json.Marshal(karr)
+	var buffer bytes.Buffer
+	buffer.Write([]byte("var kLineDataList = "))
+	buffer.Write(content)
+
+	orders, err := ts.tradeSrv.NewListOrdersService()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	oarr := [][][]string{}
+	var reOrders []*futures.Order
+	for _, v := range orders {
+		if v.Status == "CANCELED" {
+			continue
+		}
+		reOrders = append(reOrders, v)
+	}
+	if len(reOrders)%2 == 1 {
+		reOrders = reOrders[:copy(reOrders, reOrders[1:])]
+	}
+	for k, o := range reOrders {
+		if k%2 == 0 {
+			continue
+		}
+		color := "#1a736a"
+		if o.Side == futures.SideTypeBuy {
+			color = "#f00"
+		}
+		tempo := [][]string{
+			{strconv.FormatInt(reOrders[k-1].Time, 10), string(reOrders[k-1].Side), reOrders[k-1].AvgPrice, color},
+			{strconv.FormatInt(o.Time, 10), string(o.Side), o.AvgPrice, color},
+		}
+		oarr = append(oarr, tempo)
+	}
+
+	bsdata, err := json.Marshal(oarr)
+	if err != nil {
+		fmt.Println(err)
+	}
+	buffer.Write([]byte("\nvar BSPoint = "))
+	buffer.Write(bsdata)
+	content = buffer.Bytes()
+
+	ioutil.WriteFile("./web/kline.js", content, 0644)
 }
 
 func (ts *TradeServer) resetHandler() error {

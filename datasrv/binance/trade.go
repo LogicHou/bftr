@@ -159,3 +159,12 @@ func (t *TradeSrv) GetOpenOrder() (stopPrice float64, orderTime int64, err error
 	orderTime = res[0].Time
 	return
 }
+
+func (t *TradeSrv) NewListOrdersService() (res []*futures.Order, err error) {
+	res, err = client.NewListOrdersService().Symbol("ETHUSDT").
+		Do(context.Background())
+	if err != nil {
+		return
+	}
+	return
+}
