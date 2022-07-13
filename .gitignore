@@ -24,3 +24,7 @@ config.json
 .idea/
 
 kline.js
+
+robot
+
+filewatch
