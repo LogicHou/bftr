@@ -258,7 +258,7 @@ func (ts *TradeServer) updateHandler() error {
 func (ts *TradeServer) creatChartJson(klines []*indicator.Kline) {
 	karr := [][]string{}
 	for _, v := range klines {
-		tm := utils.MsToTime(v.OpenTime + 1)
+		tm := utils.MsToTime(v.OpenTime)
 		karr = append(karr, []string{
 			tm.Format("2006-01-02T15:04:05.000"),
 			utils.F64ToStr(v.Open),
@@ -346,6 +346,9 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 			}
 			return !(goldCross && deadCross)
 		}
+		if preKl2.K < ts.tradeSrv.OpenK3 && preKl1.K > ts.tradeSrv.OpenK3 {
+			return true
+		}
 		if preKl2.K < ts.tradeSrv.OpenK1 && preKl1.K > ts.tradeSrv.OpenK1 {
 			return true
 		}
@@ -366,6 +369,9 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 				}
 			}
 			return !(goldCross && deadCross)
+		}
+		if preKl2.K > ts.tradeSrv.OpenK3 && preKl1.K < ts.tradeSrv.OpenK3 {
+			return true
 		}
 		if preKl2.K > ts.tradeSrv.OpenK2 && preKl1.K < ts.tradeSrv.OpenK2 {
 			return true
