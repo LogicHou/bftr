@@ -156,6 +156,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					if td.PosAmt == 0 {
 						log.Println("GetPostionRisk may be failed, the data:", td.PosAmt, td.EntryPrice, td.Leverage, td.PosSide)
 						td.PosAmt = qty
+						td.EntryPrice = td.Wsk.C
 					}
 
 					td.Openk = curK
