@@ -331,6 +331,7 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 	switch side {
 	case futures.SideTypeBuy:
 		if preKl1.K < ts.tradeSrv.OpenK1 && curK > (ts.tradeSrv.OpenK1+kOffset) {
+			log.Println("OpenCondition - SideTypeBuy: 2001")
 			return true
 		}
 		if preKl1.K < ts.tradeSrv.OpenK3 && curK > (ts.tradeSrv.OpenK3+kOffset) {
@@ -345,16 +346,20 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 					deadCross = true
 				}
 			}
+			log.Printf("OpenCondition - SideTypeBuy: 2002 goldCross: %t deadCross: %t ", goldCross, deadCross)
 			return !(goldCross && deadCross)
 		}
 		if preKl2.K < ts.tradeSrv.OpenK3 && preKl1.K > ts.tradeSrv.OpenK3 {
+			log.Println("OpenCondition - SideTypeBuy: 2003")
 			return true
 		}
 		if preKl2.K < ts.tradeSrv.OpenK1 && preKl1.K > ts.tradeSrv.OpenK1 {
+			log.Println("OpenCondition - SideTypeBuy: 2004")
 			return true
 		}
 	case futures.SideTypeSell:
 		if preKl1.K > ts.tradeSrv.OpenK2 && curK < (ts.tradeSrv.OpenK2-kOffset) {
+			log.Println("OpenCondition - SideTypeSell: 2005")
 			return true
 		}
 		if preKl1.K > ts.tradeSrv.OpenK3 && curK < (ts.tradeSrv.OpenK3-kOffset) {
@@ -369,12 +374,15 @@ func (ts *TradeServer) openCondition(side futures.SideType, curK float64, kls []
 					deadCross = true
 				}
 			}
+			log.Printf("OpenCondition - SideTypeSell: 2006 goldCross: %t deadCross: %t ", goldCross, deadCross)
 			return !(goldCross && deadCross)
 		}
 		if preKl2.K > ts.tradeSrv.OpenK3 && preKl1.K < ts.tradeSrv.OpenK3 {
+			log.Println("OpenCondition - SideTypeSell: 2007")
 			return true
 		}
 		if preKl2.K > ts.tradeSrv.OpenK2 && preKl1.K < ts.tradeSrv.OpenK2 {
+			log.Println("OpenCondition - SideTypeSell: 2008")
 			return true
 		}
 	}
