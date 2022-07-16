@@ -6,10 +6,14 @@ import (
 	"time"
 )
 
-func MsToTime(ms int64) time.Time {
+func MsToTime(ms int64) string {
 	tm := time.Unix(0, ms*int64(time.Millisecond))
-	tm.Format("2006-02-01 15:04:05.000")
-	return tm
+	return tm.Format("2006-01-02 15:04:05.000")
+}
+
+func MsToDateTime(ms int64) string {
+	tm := time.Unix(0, ms*int64(time.Millisecond))
+	return tm.Format("2006-01-02 15:04:05")
 }
 
 func F64ToStr(f float64) string {

@@ -261,7 +261,7 @@ func (ts *TradeServer) creatChartJson(klines []*indicator.Kline) {
 	for _, v := range klines {
 		tm := utils.MsToTime(v.OpenTime)
 		karr = append(karr, []string{
-			tm.Format("2006-01-02T15:04:05.000"),
+			tm,
 			utils.F64ToStr(v.Open),
 			utils.F64ToStr(v.High),
 			utils.F64ToStr(v.Low),
