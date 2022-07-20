@@ -68,7 +68,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 		log.Printf("Data initialization succeeded: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 
 		log.Println("listening transactions...")
-		// tradeLock := false
+		tradeLock := false
 		lastRsk := td.HistKlines[len(td.HistKlines)-1]
 		cmai := indicator.NewMa(ts.tradeSrv.CloseMa)
 		omai := indicator.NewMa(ts.tradeSrv.OpenSideMa)
@@ -105,12 +105,12 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 				}
 				log.Printf("Refreshed: PosSide:%s PosAmt:%f PosQty:%d EntryPrice:%f Leverage:%f StopLoss:%f\n", td.PosSide, td.PosAmt, td.PosQty, td.EntryPrice, td.Leverage, td.StopLoss)
 
-				// tradeLock = false
+				tradeLock = false
 			}
 
 			// 开仓逻辑
-			// if td.PosAmt == 0 && tradeLock == false {
-			if td.PosAmt == 0 {
+			if td.PosAmt == 0 && tradeLock == false {
+				// if td.PosAmt == 0 {
 				oma, err := omai.CurMa(td.HistKlines, td.Wsk.C)
 				if err != nil {
 					errChan <- err
@@ -165,7 +165,7 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					if err != nil {
 						errChan <- err
 					}
-					// tradeLock = true
+					tradeLock = true
 				}
 				continue
 			}
@@ -186,6 +186,21 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 					errChan <- err
 				}
 				continue
+			}
+			if td.PosQty <= ts.tradeSrv.PosQtyUlimit {
+				switch td.PosSide {
+				case futures.SideTypeBuy:
+					if (td.Wsk.H / td.Wsk.C) > 1.035 {
+						err = ts.closePosition()
+					}
+				case futures.SideTypeSell:
+					if (td.Wsk.C / td.Wsk.L) > 1.035 {
+						err = ts.closePosition()
+					}
+				}
+				if err != nil {
+					errChan <- err
+				}
 			}
 
 			// 止损逻辑
