@@ -212,9 +212,11 @@ func (ts *TradeServer) ListenAndMonitor() (<-chan error, error) {
 	}()
 
 	go func() {
-		fs := http.FileServer(http.Dir("./web"))
-		http.Handle("/kline/", http.StripPrefix("/kline/", fs))
-		http.HandleFunc("/updatekline", webhdl.KlineUpdateHdl(td))
+		// fs := http.FileServer(http.Dir("./web"))
+		// http.Handle("/kline/", http.StripPrefix("/kline/", fs))
+		// http.HandleFunc("/updatekline", webhdl.KlineUpdateHdl(td))
+		// log.Fatal(http.ListenAndServe(":18086", nil))
+		http.HandleFunc("/info", webhdl.InfoHandler(td))
 		log.Fatal(http.ListenAndServe(":18086", nil))
 	}()
 
@@ -264,9 +266,9 @@ func (ts *TradeServer) updateHandler() error {
 		}
 	}
 
-	go func() {
-		ts.creatChartJson(histKlines)
-	}()
+	// go func() {
+	// 	ts.creatChartJson(histKlines)
+	// }()
 
 	return nil
 }
